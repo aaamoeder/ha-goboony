@@ -10,7 +10,7 @@
 
 <p align="center">
   A custom Home Assistant integration for <a href="https://www.goboony.com">Goboony</a> camper/motorhome rental owners.<br>
-  Track your bookings, earnings, availability and rates directly in your smart home.
+  Track your bookings, earnings, availability, rates and reviews directly in your smart home.
 </p>
 
 ---
@@ -19,14 +19,24 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Bookings overview** | Total, confirmed, pending and inquiry counts |
+| **Bookings overview** | Total, confirmed, accepted, pending and inquiry counts |
 | **Next booking** | Upcoming booking details with countdown |
-| **Earnings tracking** | Total confirmed earnings |
+| **Check-in countdown** | Hours until next check-in |
+| **Earnings tracking** | Total confirmed + accepted earnings |
 | **Rate monitoring** | Base and peak season rates |
 | **Calendar availability** | Booked, blocked and available day counts |
+| **Occupancy rate** | Percentage of booked vs available days |
 | **Blocked periods** | Named blocked periods (holidays, maintenance, etc.) |
+| **Reviews & rating** | Listing rating and review count |
+| **Currently rented** | Binary sensor: ON when camper is rented out |
+| **Pending requests** | Binary sensor: ON when there are open booking requests |
+| **Upcoming booking** | Binary sensor: ON when a future booking exists |
+| **Turnaround** | Binary sensor: ON between check-out and next check-in |
+| **Manual refresh** | Button entity to trigger an immediate data update |
+| **Listing photo** | Image entity showing your listing's main photo |
 | **Calendar entity** | Native HA calendar with all bookings and blocked periods |
 | **Custom card** | Beautiful bookings card with multi-status filtering |
+| **Diagnostics** | Download debug data from the integration page |
 
 ## Installation
 
@@ -62,21 +72,51 @@
 
 > The integration supports **re-authentication** — if your session expires, Home Assistant will prompt you to re-enter your credentials.
 
-## Sensors
+### Options
 
-| Sensor | Description | Unit |
-|--------|-------------|------|
-| Total bookings | Number of all bookings | — |
-| Confirmed bookings | Number of confirmed bookings | — |
-| Next booking | Dates of the next confirmed booking | — |
-| Days until next booking | Countdown to next booking | days |
-| Total earnings | Sum of confirmed booking earnings | EUR |
-| Base rate | Low season daily rate | EUR |
-| Peak rate | High season daily rate | EUR |
-| Booked days | Days with confirmed bookings | days |
-| Blocked days | Owner-blocked days | days |
-| Available days | Available days on calendar | days |
-| Blocked periods | Number of blocked periods | — |
+After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Configure** to change:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Update interval** | How often to fetch data from Goboony (minutes) | 60 |
+
+## Entities
+
+### Sensors
+
+| Sensor | Description | Unit | Category |
+|--------|-------------|------|----------|
+| Total bookings | Number of all bookings | — | — |
+| Confirmed bookings | Number of confirmed + accepted bookings | — | — |
+| Next booking | Dates of the next confirmed booking | — | — |
+| Days until next booking | Countdown to next booking | days | — |
+| Check-in countdown | Hours until next check-in | hours | — |
+| Total earnings | Sum of confirmed + accepted booking earnings | EUR | — |
+| Occupancy rate | Booked days as percentage of total | % | — |
+| Reviews | Listing rating (e.g. 5.0) with review count | — | — |
+| Base rate | Low season daily rate | EUR | Diagnostic |
+| Peak rate | High season daily rate | EUR | Diagnostic |
+| Booked days | Days with confirmed bookings | days | — |
+| Blocked days | Owner-blocked days | days | — |
+| Available days | Available days on calendar | days | — |
+| Blocked periods | Number of blocked periods | — | Diagnostic |
+
+### Binary sensors
+
+| Sensor | Description |
+|--------|-------------|
+| Currently rented | ON when the camper is currently rented out |
+| Pending requests | ON when there are open booking requests or inquiries |
+| Upcoming booking | ON when there is a future confirmed booking |
+| Turnaround | ON between a check-out and the next check-in |
+
+### Other entities
+
+| Entity | Type | Description |
+|--------|------|-------------|
+| Refresh data | Button | Trigger an immediate data refresh |
+| Listing photo | Image | Main photo from your Goboony listing |
+| Bookings calendar | Calendar | All bookings and blocked periods |
 
 ## Custom Lovelace card
 
@@ -89,11 +129,21 @@ The integration includes a custom bookings card that is **automatically register
 3. Search for **Goboony Bookings**
 4. Configure via the visual editor
 
+### Card features
+
+- Active rental highlight with progress bar and countdown
+- Clickable bookings linking to Goboony detail page
+- Review rating display in header
+- Multi-status filtering (confirmed, accepted, requests, inquiries, messages, modified)
+- Earnings per booking
+- Rental duration in days
+
 ### Card options
 
 | Option | Description | Default |
 |--------|-------------|---------|
 | **Entity** | The Goboony total bookings sensor | — |
+| **Review entity** | The Goboony reviews sensor (optional) | — |
 | **Title** | Card header title | `Goboony Bookings` |
 | **Show statuses** | Which booking statuses to display (multi-select) | All enabled |
 | **Show earnings** | Show earnings per booking | `true` |
@@ -104,6 +154,7 @@ The integration includes a custom bookings card that is **automatically register
 ```yaml
 type: custom:goboony-bookings-card
 entity: sensor.goboony_68972_total_bookings
+review_entity: sensor.goboony_68972_reviews
 title: My Camper Bookings
 show_statuses:
   - confirmed
@@ -116,17 +167,22 @@ show_days: true
 ## Calendar
 
 The integration creates a native Home Assistant **calendar entity** showing:
-- Confirmed bookings with renter name and dates
+- Confirmed and accepted bookings with renter name and dates
 - Owner-blocked periods
 
 This works with all calendar cards and automations in Home Assistant.
+
+## Diagnostics
+
+Go to **Settings** > **Devices & Services** > **Goboony** > **three dots** > **Download diagnostics** to get a debug data file. Credentials are automatically redacted.
 
 ## How it works
 
 Goboony does not provide a public API. Their mobile app uses server-rendered HTML via [Turbo Native](https://turbo.hotwired.dev/handbook/native). This integration scrapes the owner dashboard to retrieve your data.
 
-- **Polling interval**: every 60 minutes
+- **Polling interval**: configurable, default 60 minutes (range: 15–1440 minutes)
 - **Authentication**: standard email/password login
+- **Data sources**: dashboard bookings, booking details, availability calendar, rates, public listing page
 
 ## Supported languages
 
@@ -148,6 +204,8 @@ The integration UI is translated into all Goboony market languages:
 | Authentication failed | Check credentials, re-authenticate via **Settings > Integrations** |
 | No bookings shown | Verify your listing ID is correct |
 | Card not appearing | Make sure the integration is loaded, then search for "Goboony Bookings" when adding a card |
+| Accepted bookings not showing | Make sure "Accepted" is checked in card settings, and clear browser cache |
+| Sensors showing "unknown" | Wait for the first data fetch (up to 60 min) or press the Refresh button |
 
 ## Disclaimer
 
