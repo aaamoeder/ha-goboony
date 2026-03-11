@@ -56,37 +56,33 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         <select id="entity">
           ${this._entityOptions(cfg.entity)}
         </select>
-        <span class="hint">Kies de Goboony totaal boekingen sensor</span>
+        <span class="hint">Select the Goboony total bookings sensor</span>
       </div>
 
       <div class="editor-row">
-        <label>Titel</label>
-        <input id="title" type="text" value="${cfg.title || "Goboony Boekingen"}" placeholder="Goboony Boekingen" />
+        <label>Title</label>
+        <input id="title" type="text" value="${cfg.title || "Goboony Bookings"}" placeholder="Goboony Bookings" />
       </div>
 
       <div class="editor-row">
-        <label>Standaard filter</label>
+        <label>Filter</label>
         <select id="default_filter">
-          <option value="all" ${cfg.default_filter === "all" || !cfg.default_filter ? "selected" : ""}>Alles</option>
-          <option value="confirmed" ${cfg.default_filter === "confirmed" ? "selected" : ""}>Bevestigd</option>
-          <option value="request" ${cfg.default_filter === "request" ? "selected" : ""}>Aanvragen</option>
-          <option value="message" ${cfg.default_filter === "message" ? "selected" : ""}>Berichten</option>
+          <option value="all" ${cfg.default_filter === "all" || !cfg.default_filter ? "selected" : ""}>All</option>
+          <option value="confirmed" ${cfg.default_filter === "confirmed" ? "selected" : ""}>Confirmed</option>
+          <option value="request" ${cfg.default_filter === "request" ? "selected" : ""}>Requests</option>
+          <option value="message" ${cfg.default_filter === "message" ? "selected" : ""}>Messages</option>
         </select>
+        <span class="hint">Which bookings to show</span>
       </div>
 
       <div class="editor-toggle">
         <input type="checkbox" id="show_earnings" ${cfg.show_earnings !== false ? "checked" : ""} />
-        <label for="show_earnings">Inkomsten tonen</label>
+        <label for="show_earnings">Show earnings</label>
       </div>
 
       <div class="editor-toggle">
         <input type="checkbox" id="show_days" ${cfg.show_days !== false ? "checked" : ""} />
-        <label for="show_days">Aantal dagen tonen</label>
-      </div>
-
-      <div class="editor-toggle">
-        <input type="checkbox" id="show_filters" ${cfg.show_filters !== false ? "checked" : ""} />
-        <label for="show_filters">Filterknoppen tonen</label>
+        <label for="show_days">Show number of days</label>
       </div>
     `;
 
@@ -95,7 +91,6 @@ class GoboonyBookingsCardEditor extends HTMLElement {
     this.querySelector("#default_filter").addEventListener("change", (e) => this._update("default_filter", e.target.value));
     this.querySelector("#show_earnings").addEventListener("change", (e) => this._update("show_earnings", e.target.checked));
     this.querySelector("#show_days").addEventListener("change", (e) => this._update("show_days", e.target.checked));
-    this.querySelector("#show_filters").addEventListener("change", (e) => this._update("show_filters", e.target.checked));
   }
 
   _entityOptions(selected) {
@@ -123,11 +118,6 @@ customElements.define("goboony-bookings-card-editor", GoboonyBookingsCardEditor)
 
 
 class GoboonyBookingsCard extends HTMLElement {
-  constructor() {
-    super();
-    this._activeFilter = null;
-  }
-
   static getConfigElement() {
     return document.createElement("goboony-bookings-card-editor");
   }
@@ -139,10 +129,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config;
-    this._entityId = config.entity || "sensor.goboony_totaal_boekingen";
-    if (this._activeFilter === null) {
-      this._activeFilter = config.default_filter || "all";
-    }
+    this._entityId = config.entity || "sensor.goboony_total_bookings";
   }
 
   getCardSize() {
@@ -151,30 +138,24 @@ class GoboonyBookingsCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      entity: "sensor.goboony_totaal_boekingen",
-      title: "Goboony Boekingen",
+      entity: "sensor.goboony_total_bookings",
+      title: "Goboony Bookings",
       default_filter: "all",
       show_earnings: true,
       show_days: true,
-      show_filters: true,
     };
   }
 
   _statusInfo(status) {
     const map = {
-      confirmed: { label: "Bevestigd", icon: "✓", color: "#4CAF50", bg: "#E8F5E9" },
-      request_accepted: { label: "Geaccepteerd", icon: "✓", color: "#4CAF50", bg: "#E8F5E9" },
-      request: { label: "Aanvraag", icon: "⏳", color: "#FF9800", bg: "#FFF3E0" },
-      inquiry: { label: "Vraag", icon: "💬", color: "#2196F3", bg: "#E3F2FD" },
-      message: { label: "Bericht", icon: "💬", color: "#2196F3", bg: "#E3F2FD" },
-      dates_changed_by_admin: { label: "Gewijzigd", icon: "✎", color: "#9C27B0", bg: "#F3E5F5" },
+      confirmed: { label: "Confirmed", icon: "✓", color: "#4CAF50", bg: "#E8F5E9" },
+      request_accepted: { label: "Accepted", icon: "✓", color: "#4CAF50", bg: "#E8F5E9" },
+      request: { label: "Request", icon: "⏳", color: "#FF9800", bg: "#FFF3E0" },
+      inquiry: { label: "Inquiry", icon: "💬", color: "#2196F3", bg: "#E3F2FD" },
+      message: { label: "Message", icon: "💬", color: "#2196F3", bg: "#E3F2FD" },
+      dates_changed_by_admin: { label: "Modified", icon: "✎", color: "#9C27B0", bg: "#F3E5F5" },
     };
     return map[status] || { label: status, icon: "?", color: "#757575", bg: "#F5F5F5" };
-  }
-
-  _setFilter(filter) {
-    this._activeFilter = filter;
-    this._render();
   }
 
   _render() {
@@ -182,7 +163,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     const state = this._hass.states[this._entityId];
     if (!state) {
-      this.innerHTML = `<ha-card header="Goboony Boekingen"><div class="card-content">Entity niet gevonden: ${this._entityId}</div></ha-card>`;
+      this.innerHTML = `<ha-card header="Goboony Bookings"><div class="card-content">Entity not found: ${this._entityId}</div></ha-card>`;
       return;
     }
 
@@ -190,17 +171,11 @@ class GoboonyBookingsCard extends HTMLElement {
     const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "request_accepted");
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
 
-    // Count per status for filter badges
-    const counts = { all: bookings.length };
-    for (const b of bookings) {
-      const key = this._filterKey(b.status);
-      counts[key] = (counts[key] || 0) + 1;
-    }
-
-    // Filter bookings
-    const filtered = this._activeFilter === "all"
+    // Filter bookings based on config
+    const activeFilter = this._config.default_filter || "all";
+    const filtered = activeFilter === "all"
       ? [...bookings]
-      : bookings.filter(b => this._filterKey(b.status) === this._activeFilter);
+      : bookings.filter(b => this._filterKey(b.status) === activeFilter);
 
     // Sort by start date (earliest first)
     filtered.sort((a, b) => {
@@ -212,38 +187,17 @@ class GoboonyBookingsCard extends HTMLElement {
       return da - db;
     });
 
-    // Build filter buttons
-    const filters = [
-      { key: "all", label: "Alles", color: "#757575", bg: "#F5F5F5" },
-      { key: "confirmed", label: "Bevestigd", color: "#4CAF50", bg: "#E8F5E9" },
-      { key: "request", label: "Aanvraag", color: "#FF9800", bg: "#FFF3E0" },
-      { key: "message", label: "Berichten", color: "#2196F3", bg: "#E3F2FD" },
-    ];
-
-    let filterHtml = "";
-    for (const f of filters) {
-      if (f.key !== "all" && !counts[f.key]) continue;
-      const active = this._activeFilter === f.key;
-      filterHtml += `
-        <button class="filter-btn ${active ? "active" : ""}" data-filter="${f.key}"
-          style="--f-color:${f.color};--f-bg:${f.bg}">
-          ${f.label}
-          <span class="filter-count">${counts[f.key] || 0}</span>
-        </button>
-      `;
-    }
-
     // Build booking rows
     let bookingRows = "";
     if (filtered.length === 0) {
-      bookingRows = `<div class="empty">Geen boekingen met deze status</div>`;
+      bookingRows = `<div class="empty">No bookings found</div>`;
     } else {
       for (const b of filtered) {
         const si = this._statusInfo(b.status);
         const dates = b.check_in ? `${b.check_in}` : b.dates || "—";
         const datesTo = b.check_out || "";
         const earnings = b.earnings != null ? `€${b.earnings.toFixed(2)}` : "—";
-        const days = b.num_days ? `${b.num_days} dagen` : "";
+        const days = b.num_days ? `${b.num_days}d` : "";
 
         bookingRows += `
           <div class="booking">
@@ -256,7 +210,7 @@ class GoboonyBookingsCard extends HTMLElement {
             <div class="booking-body">
               <div class="renter">
                 <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
-                <span>${b.renter || "Onbekend"}</span>
+                <span>${b.renter || "Unknown"}</span>
               </div>
               <div class="dates">
                 <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,2 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
@@ -277,14 +231,13 @@ class GoboonyBookingsCard extends HTMLElement {
         <div class="card-header-custom">
           <div class="header-left">
             <svg class="header-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/></svg>
-            <span>${this._config.title || "Goboony Boekingen"}</span>
+            <span>${this._config.title || "Goboony Bookings"}</span>
           </div>
           <div class="header-stats">
-            <span class="stat">${confirmed.length} bevestigd</span>
+            <span class="stat">${confirmed.length} confirmed</span>
             <span class="stat total">€${totalEarnings.toFixed(2)}</span>
           </div>
         </div>
-        ${this._config.show_filters !== false ? `<div class="filter-bar">${filterHtml}</div>` : ""}
         <div class="card-content-custom">
           ${bookingRows}
         </div>
@@ -328,50 +281,6 @@ class GoboonyBookingsCard extends HTMLElement {
           font-weight: 600;
           color: #4CAF50;
           background: #E8F5E9;
-        }
-        .filter-bar {
-          display: flex;
-          gap: 8px;
-          padding: 0 16px 12px;
-          flex-wrap: wrap;
-          border-bottom: 1px solid var(--divider-color, #e0e0e0);
-        }
-        .filter-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 14px;
-          border: 2px solid transparent;
-          border-radius: 20px;
-          background: var(--secondary-background-color, #f5f5f5);
-          color: var(--secondary-text-color);
-          font-size: 0.85em;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: inherit;
-        }
-        .filter-btn:hover {
-          border-color: var(--f-color);
-          background: var(--f-bg);
-          color: var(--f-color);
-        }
-        .filter-btn.active {
-          background: var(--f-bg);
-          color: var(--f-color);
-          border-color: var(--f-color);
-          font-weight: 600;
-        }
-        .filter-count {
-          background: rgba(0,0,0,0.08);
-          padding: 1px 7px;
-          border-radius: 10px;
-          font-size: 0.9em;
-          min-width: 18px;
-          text-align: center;
-        }
-        .filter-btn.active .filter-count {
-          background: rgba(0,0,0,0.1);
         }
         .card-content-custom {
           padding: 12px 16px 16px;
@@ -457,12 +366,6 @@ class GoboonyBookingsCard extends HTMLElement {
       </style>
     `;
 
-    // Attach filter button click handlers
-    this.querySelectorAll(".filter-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this._setFilter(btn.dataset.filter);
-      });
-    });
   }
 
   _extractStartDate(booking) {
@@ -502,7 +405,7 @@ customElements.define("goboony-bookings-card", GoboonyBookingsCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "goboony-bookings-card",
-  name: "Goboony Boekingen",
-  description: "Toont aankomende Goboony boekingen met status, datums en inkomsten",
+  name: "Goboony Bookings",
+  description: "Shows upcoming Goboony bookings with status, dates and earnings",
   preview: true,
 });
