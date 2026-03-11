@@ -60,11 +60,9 @@ A Home Assistant custom integration for [Goboony](https://www.goboony.com) campe
 
 ## Custom Lovelace Card
 
-The integration includes a custom bookings card. To use it:
+The integration includes a custom bookings card that is automatically registered when the integration loads. No manual file copying or resource registration needed.
 
-1. Copy `goboony-bookings-card.js` to your `www/` folder
-2. Add it as a resource: **Settings** > **Dashboards** > **Resources** > Add `/local/goboony-bookings-card.js` as JavaScript Module
-3. Add the card to your dashboard:
+Add the card to your dashboard:
 
 ```yaml
 type: custom:goboony-bookings-card
