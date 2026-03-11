@@ -148,7 +148,7 @@ class GoboonyApi:
             bookings.append({
                 "booking_id": booking_id,
                 "booking_number": booking_num,
-                "status": status.lower(),
+                "status": status.lower().replace(" ", "_"),
                 "renter": renter,
                 "dates": dates,
                 "earnings": earnings,
