@@ -199,52 +199,54 @@ class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
     def unique_id(self) -> str:
         return f"{self._listing_id}_next_booking_days"
 
+    @staticmethod
+    def _parse_check_in_date(booking: dict) -> datetime | None:
+        """Parse the check-in date from booking data."""
+        import re as _re
+
+        # Try check_in field: "Mon 27 Apr – 2:00 PM" or "Mon 27 Apr 2026 – 2:00 PM"
+        check_in = booking.get("check_in", "")
+        if check_in:
+            m = _re.search(r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?", check_in, _re.IGNORECASE)
+            if m:
+                months = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
+                day = int(m.group(1))
+                month = months[m.group(2).lower()]
+                year = int(m.group(3)) if m.group(3) else datetime.now().year
+                return datetime(year, month, day, tzinfo=timezone.utc)
+
+        # Try dates field: "April 27\n – \nMay 1, 2026"
+        dates = booking.get("dates", "")
+        if dates:
+            # Normalize whitespace
+            dates_clean = " ".join(dates.split())
+            # Try "Month DD – Month DD, YYYY" pattern
+            m = _re.search(r"(\w+)\s+(\d{1,2}).*?(\w+)\s+(\d{1,2}),?\s*(\d{4})", dates_clean)
+            if m:
+                months = {"january":1,"february":2,"march":3,"april":4,"may":5,"june":6,"july":7,"august":8,"september":9,"october":10,"november":11,"december":12,
+                          "jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
+                start_month = months.get(m.group(1).lower())
+                if start_month:
+                    year = int(m.group(5))
+                    return datetime(year, start_month, int(m.group(2)), tzinfo=timezone.utc)
+
+        return None
+
     @property
     def native_value(self) -> int | None:
         bookings = self._get_confirmed_bookings()
         now = datetime.now(timezone.utc)
+        today = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
+        best = None
         for b in bookings:
-            dates = b.get("dates", "")
-            check_in = b.get("check_in", "")
-            if check_in:
-                try:
-                    dt = datetime.fromisoformat(check_in)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    delta = (dt - now).days
-                    if delta >= 0:
-                        return delta
-                except (ValueError, TypeError):
-                    pass
-            if dates:
-                try:
-                    parts = dates.split(" - ")
-                    if len(parts) == 2:
-                        start_str = parts[0].strip()
-                        end_str = parts[1].strip()
-                        year = datetime.now().year
-                        for fmt in ["%b %d, %Y", "%b %d %Y"]:
-                            try:
-                                end_dt = datetime.strptime(end_str, fmt)
-                                year = end_dt.year
-                                break
-                            except ValueError:
-                                continue
-                        for fmt in ["%b %d", "%b %d, %Y"]:
-                            try:
-                                start_dt = datetime.strptime(start_str, fmt)
-                                start_dt = start_dt.replace(year=year, tzinfo=timezone.utc)
-                                delta = (start_dt - now).days
-                                if delta >= 0:
-                                    return delta
-                                break
-                            except ValueError:
-                                continue
-                except Exception:
-                    pass
+            dt = self._parse_check_in_date(b)
+            if dt and dt >= today:
+                delta = (dt - today).days
+                if best is None or delta < best:
+                    best = delta
 
-        return None
+        return best
 
 
 class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
