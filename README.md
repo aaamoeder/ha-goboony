@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/banner.png" alt="Goboony for Home Assistant" width="800">
+  <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/banner.png" alt="Goboony for Home Assistant" width="800">
 </p>
 
 <p align="center">
