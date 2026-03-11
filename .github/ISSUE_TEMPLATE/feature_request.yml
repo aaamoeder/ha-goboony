@@ -1,0 +1,29 @@
+name: Feature Request
+description: Suggest a new feature for the Goboony integration
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature!
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the feature you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Explain why this feature would be useful.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or features you have considered.
+    validations:
+      required: false

@@ -32,7 +32,7 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Get the options flow."""
-        return GoboonyOptionsFlow(config_entry)
+        return GoboonyOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -120,10 +120,6 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
 class GoboonyOptionsFlow(OptionsFlow):
     """Handle options for Goboony."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self._config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -131,7 +127,7 @@ class GoboonyOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_interval = self._config_entry.options.get(
+        current_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL // 60
         )
 
