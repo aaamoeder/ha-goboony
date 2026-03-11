@@ -52,6 +52,11 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         default: true,
         selector: { boolean: {} },
       },
+      {
+        name: "compact_mode",
+        default: false,
+        selector: { boolean: {} },
+      },
     ];
   }
 
@@ -63,6 +68,7 @@ class GoboonyBookingsCardEditor extends HTMLElement {
       show_statuses: "Show statuses",
       show_earnings: "Show earnings",
       show_days: "Show number of days",
+      compact_mode: "Compact mode",
     };
     return labels[schema.name] || schema.name;
   }
@@ -82,11 +88,11 @@ class GoboonyBookingsCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
 
-    // Ensure defaults for ha-form data
     const data = {
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
       show_earnings: true,
       show_days: true,
+      compact_mode: false,
       ...this._config,
     };
 
@@ -125,20 +131,21 @@ class GoboonyBookingsCard extends HTMLElement {
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
       show_earnings: true,
       show_days: true,
+      compact_mode: false,
     };
   }
 
   _statusInfo(status) {
     const map = {
-      confirmed: { label: "Confirmed", icon: "\u2713", color: "#4CAF50", bg: "#E8F5E9" },
-      accepted: { label: "Accepted", icon: "\u2713", color: "#2196F3", bg: "#E3F2FD" },
-      request_accepted: { label: "Accepted", icon: "\u2713", color: "#2196F3", bg: "#E3F2FD" },
-      request: { label: "Request", icon: "\u23F3", color: "#FF9800", bg: "#FFF3E0" },
-      inquiry: { label: "Inquiry", icon: "\uD83D\uDCAC", color: "#2196F3", bg: "#E3F2FD" },
-      message: { label: "Message", icon: "\uD83D\uDCAC", color: "#2196F3", bg: "#E3F2FD" },
-      dates_changed_by_admin: { label: "Modified", icon: "\u270E", color: "#9C27B0", bg: "#F3E5F5" },
+      confirmed: { label: "Confirmed", color: "#4CAF50" },
+      accepted: { label: "Accepted", color: "#2196F3" },
+      request_accepted: { label: "Accepted", color: "#2196F3" },
+      request: { label: "Request", color: "#FF9800" },
+      inquiry: { label: "Inquiry", color: "#9C27B0" },
+      message: { label: "Message", color: "#607D8B" },
+      dates_changed_by_admin: { label: "Modified", color: "#9C27B0" },
     };
-    return map[status] || { label: status, icon: "?", color: "#757575", bg: "#F5F5F5" };
+    return map[status] || { label: status, color: "#757575" };
   }
 
   _extractStartDate(booking) {
@@ -164,6 +171,20 @@ class GoboonyBookingsCard extends HTMLElement {
     return null;
   }
 
+  _relativeDate(startDate) {
+    if (!startDate) return "";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const diff = Math.round((start - today) / 86400000);
+    if (diff === 0) return "today";
+    if (diff === 1) return "tomorrow";
+    if (diff === -1) return "yesterday";
+    if (diff > 1) return `in ${diff}d`;
+    return `${Math.abs(diff)}d ago`;
+  }
+
   _statusEnabled(status, showStatuses) {
     const map = {
       confirmed: "confirmed",
@@ -180,7 +201,6 @@ class GoboonyBookingsCard extends HTMLElement {
 
   _findActiveRental(bookings) {
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
     for (const b of bookings) {
       if (b.status !== "confirmed" && b.status !== "accepted" && b.status !== "request_accepted") continue;
       const startDate = this._extractStartDate(b);
@@ -209,6 +229,20 @@ class GoboonyBookingsCard extends HTMLElement {
     return null;
   }
 
+  _lastUpdated() {
+    const state = this._hass.states[this._entityId];
+    if (!state || !state.last_updated) return "";
+    const updated = new Date(state.last_updated);
+    const now = new Date();
+    const diffMin = Math.round((now - updated) / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin === 1) return "1 min ago";
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHr = Math.round(diffMin / 60);
+    if (diffHr === 1) return "1 hour ago";
+    return `${diffHr} hours ago`;
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
 
@@ -221,6 +255,7 @@ class GoboonyBookingsCard extends HTMLElement {
     const bookings = state.attributes.bookings || [];
     const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted");
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
+    const compact = this._config.compact_mode === true;
 
     // Review entity data
     let reviewHtml = "";
@@ -265,38 +300,28 @@ class GoboonyBookingsCard extends HTMLElement {
       `;
     }
 
-    // Filter bookings based on enabled statuses
+    // Filter bookings
     const showStatuses = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
     const filtered = bookings.filter(b => this._statusEnabled(b.status, showStatuses));
 
-    // Group by status category, then sort by date within each group
+    // Group by status, sort by date within
     const statusOrder = ["confirmed", "accepted", "request_accepted", "request", "inquiry", "message", "dates_changed_by_admin"];
     filtered.sort((a, b) => {
-      const ia = statusOrder.indexOf(a.status);
-      const ib = statusOrder.indexOf(b.status);
-      const oa = ia >= 0 ? ia : 99;
-      const ob = ib >= 0 ? ib : 99;
-      if (oa !== ob) return oa - ob;
-      const da = this._extractStartDate(a);
-      const db = this._extractStartDate(b);
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
+      const oa = statusOrder.indexOf(a.status); const ob = statusOrder.indexOf(b.status);
+      const sa = oa >= 0 ? oa : 99; const sb = ob >= 0 ? ob : 99;
+      if (sa !== sb) return sa - sb;
+      const da = this._extractStartDate(a); const db = this._extractStartDate(b);
+      if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
       return da - db;
     });
 
-    // Section labels for status groups
     const sectionLabels = {
-      confirmed: "Confirmed",
-      accepted: "Accepted",
-      request_accepted: "Accepted",
-      request: "Requests",
-      inquiry: "Inquiries",
-      message: "Messages",
+      confirmed: "Confirmed", accepted: "Accepted", request_accepted: "Accepted",
+      request: "Requests", inquiry: "Inquiries", message: "Messages",
       dates_changed_by_admin: "Modified",
     };
 
-    // Build booking rows with section dividers
+    // Build booking rows
     let bookingRows = "";
     if (filtered.length === 0) {
       bookingRows = `<div class="empty">No bookings found</div>`;
@@ -305,9 +330,7 @@ class GoboonyBookingsCard extends HTMLElement {
       for (const b of filtered) {
         const section = sectionLabels[b.status] || b.status;
         if (section !== lastSection) {
-          if (lastSection !== "") {
-            bookingRows += `<div class="section-divider"></div>`;
-          }
+          if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
           bookingRows += `<div class="section-label">${section}</div>`;
           lastSection = section;
         }
@@ -317,35 +340,51 @@ class GoboonyBookingsCard extends HTMLElement {
         const earnings = b.earnings != null ? `\u20ac${b.earnings.toFixed(2)}` : "\u2014";
         const days = b.num_days ? `${b.num_days}d` : "";
         const hasUrl = b.url && b.url.length > 0;
+        const startDate = this._extractStartDate(b);
+        const relative = this._relativeDate(startDate);
+        const bookingNum = b.booking_number || b.id || "";
 
-        bookingRows += `
-          <${hasUrl ? `a href="${b.url}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
-            <div class="booking">
-              <div class="booking-header">
-                <span class="status-badge" style="background:${si.bg};color:${si.color}">
-                  <span class="status-icon">${si.icon}</span> ${si.label}
-                </span>
-                ${this._config.show_earnings !== false ? `<span class="earnings" ${b.earnings != null ? "" : 'style="opacity:0.4"'}>${earnings}</span>` : ""}
+        if (compact) {
+          bookingRows += `
+            <${hasUrl ? `a href="${b.url}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
+              <div class="booking-compact" style="border-left-color:${si.color}">
+                <span class="compact-renter">${b.renter || "Unknown"}</span>
+                <span class="compact-dates">${dates}${relative ? ` <span class="relative">${relative}</span>` : ""}</span>
+                ${days && this._config.show_days !== false ? `<span class="compact-days">${days}</span>` : ""}
+                ${this._config.show_earnings !== false ? `<span class="compact-earnings">${earnings}</span>` : ""}
               </div>
-              <div class="booking-body">
-                <div class="renter">
-                  <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
-                  <span>${b.renter || "Unknown"}</span>
-                </div>
-                <div class="dates">
-                  <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,2 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
-                  <div class="date-range">
-                    <span>${dates}</span>
-                    ${datesTo ? `<span class="date-arrow">\u2192</span><span>${datesTo}</span>` : ""}
+            </${hasUrl ? "a" : "div"}>
+          `;
+        } else {
+          bookingRows += `
+            <${hasUrl ? `a href="${b.url}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
+              <div class="booking" style="border-left-color:${si.color}">
+                <div class="booking-header">
+                  <div class="renter-block">
+                    <span class="renter-name">${b.renter || "Unknown"}</span>
+                    ${bookingNum ? `<span class="booking-num">#${bookingNum}</span>` : ""}
                   </div>
+                  ${this._config.show_earnings !== false ? `<span class="earnings" ${b.earnings != null ? "" : 'style="opacity:0.35"'}>${earnings}</span>` : ""}
                 </div>
-                ${days && this._config.show_days !== false ? `<div class="days"><svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></svg><span>${days}</span></div>` : ""}
+                <div class="booking-body">
+                  <div class="dates">
+                    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,2 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                    <div class="date-range">
+                      <span>${dates}</span>
+                      ${datesTo ? `<span class="date-arrow">\u2192</span><span>${datesTo}</span>` : ""}
+                      ${relative ? `<span class="relative">${relative}</span>` : ""}
+                    </div>
+                  </div>
+                  ${days && this._config.show_days !== false ? `<div class="days-row"><svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></svg><span>${days}</span></div>` : ""}
+                </div>
               </div>
-            </div>
-          </${hasUrl ? "a" : "div"}>
-        `;
+            </${hasUrl ? "a" : "div"}>
+          `;
+        }
       }
     }
+
+    const lastUpdated = this._lastUpdated();
 
     this.innerHTML = `
       <ha-card>
@@ -356,237 +395,165 @@ class GoboonyBookingsCard extends HTMLElement {
             ${reviewHtml}
           </div>
           <div class="header-stats">
-            <span class="stat total">\u20ac${totalEarnings.toFixed(2)}</span>
+            <div class="earnings-block">
+              <span class="earnings-label">Total earnings</span>
+              <span class="earnings-value">\u20ac${totalEarnings.toFixed(2)}</span>
+            </div>
           </div>
         </div>
         <div class="card-content-custom">
           ${activeRentalHtml}
           ${bookingRows}
         </div>
+        ${lastUpdated ? `<div class="card-footer">Updated ${lastUpdated}</div>` : ""}
       </ha-card>
       <style>
-        ha-card {
-          overflow: hidden;
-        }
+        ha-card { overflow: hidden; }
+
+        /* Header */
         .card-header-custom {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px 16px 12px;
-          flex-wrap: wrap;
-          gap: 8px;
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 16px 16px 12px; flex-wrap: wrap; gap: 8px;
         }
         .header-left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 1.1em;
-          font-weight: 500;
-          color: var(--primary-text-color);
+          display: flex; align-items: center; gap: 10px;
+          font-size: 1.1em; font-weight: 500; color: var(--primary-text-color);
         }
-        .header-icon {
-          width: 28px;
-          height: 28px;
-          color: var(--primary-color, #03a9f4);
-        }
+        .header-icon { width: 28px; height: 28px; color: #d92465; }
         .header-rating {
-          font-size: 0.82em;
-          font-weight: 600;
-          color: #F9A825;
-          background: #FFF8E1;
-          padding: 3px 10px;
-          border-radius: 12px;
-          white-space: nowrap;
+          font-size: 0.82em; font-weight: 600; color: #F9A825;
+          background: rgba(249,168,37,0.12); padding: 3px 10px;
+          border-radius: 12px; white-space: nowrap;
         }
-        .header-stats {
-          display: flex;
-          gap: 12px;
-          align-items: center;
+        .header-stats { display: flex; align-items: center; }
+        .earnings-block {
+          display: flex; flex-direction: column; align-items: flex-end;
         }
-        .stat {
-          font-size: 0.85em;
-          color: var(--secondary-text-color);
-          background: var(--secondary-background-color, #f5f5f5);
-          padding: 4px 10px;
-          border-radius: 12px;
+        .earnings-label {
+          font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.05em;
+          color: var(--secondary-text-color); opacity: 0.7;
         }
-        .stat.total {
-          font-weight: 600;
-          color: #4CAF50;
-          background: #E8F5E9;
+        .earnings-value {
+          font-size: 1.15em; font-weight: 700; color: #4CAF50;
         }
-        .card-content-custom {
-          padding: 12px 16px 16px;
-        }
-        /* Active rental */
+
+        /* Content */
+        .card-content-custom { padding: 4px 16px 8px; }
+
+        /* Active rental - Goboony gradient */
         .active-rental {
-          background: linear-gradient(135deg, #0288D1, #00838F);
-          color: #fff;
-          border-radius: 14px;
-          padding: 16px;
-          margin-bottom: 14px;
+          background: linear-gradient(135deg, #d92465, #a01d4f);
+          color: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px;
         }
         .active-rental-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.82em;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          opacity: 0.9;
-          margin-bottom: 8px;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 0.82em; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.06em; opacity: 0.9; margin-bottom: 8px;
         }
-        .active-rental-icon {
-          width: 20px;
-          height: 20px;
-          color: #fff;
-        }
+        .active-rental-icon { width: 20px; height: 20px; color: #fff; }
         .active-rental-renter {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 1.15em;
-          font-weight: 600;
-          margin-bottom: 4px;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 1.15em; font-weight: 600; margin-bottom: 4px;
         }
-        .active-rental-person-icon {
-          width: 22px;
-          height: 22px;
-          color: #fff;
-          opacity: 0.85;
-        }
-        .active-rental-dates {
-          font-size: 0.9em;
-          opacity: 0.85;
-          margin-bottom: 10px;
-        }
-        .active-rental-countdown {
-          font-size: 1em;
-          font-weight: 600;
-          margin-bottom: 8px;
-        }
+        .active-rental-person-icon { width: 22px; height: 22px; color: #fff; opacity: 0.85; }
+        .active-rental-dates { font-size: 0.9em; opacity: 0.85; margin-bottom: 10px; }
+        .active-rental-countdown { font-size: 1em; font-weight: 600; margin-bottom: 8px; }
         .active-rental-progress-track {
-          background: rgba(255,255,255,0.25);
-          border-radius: 6px;
-          height: 8px;
-          overflow: hidden;
-          margin-bottom: 4px;
+          background: rgba(255,255,255,0.25); border-radius: 6px;
+          height: 8px; overflow: hidden; margin-bottom: 4px;
         }
         .active-rental-progress-bar {
-          background: #fff;
-          height: 100%;
-          border-radius: 6px;
-          transition: width 0.4s ease;
+          background: #fff; height: 100%; border-radius: 6px; transition: width 0.4s ease;
         }
-        .active-rental-progress-label {
-          font-size: 0.78em;
-          opacity: 0.75;
-          text-align: right;
-        }
+        .active-rental-progress-label { font-size: 0.78em; opacity: 0.75; text-align: right; }
+
         /* Booking links */
-        a.booking-link, div.booking-link-none {
-          display: block;
-          text-decoration: none;
-          color: inherit;
+        a.booking-link, div.booking-link-none { display: block; text-decoration: none; color: inherit; }
+        a.booking-link:hover .booking, a.booking-link:hover .booking-compact {
+          box-shadow: 0 2px 12px rgba(0,0,0,0.10); border-color: #d92465;
         }
-        a.booking-link:hover .booking {
-          box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-          border-color: var(--primary-color, #03a9f4);
-        }
-        a.booking-link .booking {
-          cursor: pointer;
-        }
+        a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
+
+        /* Normal booking card */
         .booking {
           background: var(--card-background-color, #fff);
           border: 1px solid var(--divider-color, #e8e8e8);
-          border-radius: 12px;
-          padding: 14px;
-          margin-bottom: 10px;
-          transition: box-shadow 0.2s, border-color 0.2s;
-        }
-        .booking:last-child {
-          margin-bottom: 0;
-        }
-        div.booking-link-none .booking:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          border-left: 3px solid #757575;
+          border-radius: 10px; padding: 12px 14px;
+          margin-bottom: 8px; transition: box-shadow 0.2s, border-color 0.2s;
         }
         .booking-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10px;
+          display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;
         }
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 0.82em;
-          font-weight: 600;
-          letter-spacing: 0.02em;
+        .renter-block { display: flex; flex-direction: column; gap: 1px; }
+        .renter-name {
+          font-weight: 600; color: var(--primary-text-color); font-size: 0.98em;
         }
-        .status-icon {
-          font-size: 0.9em;
+        .booking-num {
+          font-size: 0.72em; color: var(--secondary-text-color); opacity: 0.6;
         }
-        .earnings {
-          font-size: 1.15em;
-          font-weight: 700;
-          color: var(--primary-text-color);
-        }
-        .booking-body {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .renter, .dates, .days {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: var(--secondary-text-color);
-          font-size: 0.92em;
-        }
-        .renter span {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          font-size: 1.02em;
+        .earnings { font-size: 1.1em; font-weight: 700; color: var(--primary-text-color); }
+        .booking-body { display: flex; flex-direction: column; gap: 4px; }
+        .dates, .days-row {
+          display: flex; align-items: center; gap: 8px;
+          color: var(--secondary-text-color); font-size: 0.88em;
         }
         .icon {
-          width: 18px;
-          height: 18px;
-          flex-shrink: 0;
-          color: var(--secondary-text-color);
-          opacity: 0.7;
+          width: 16px; height: 16px; flex-shrink: 0;
+          color: var(--secondary-text-color); opacity: 0.6;
         }
-        .date-range {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
+        .date-range { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .date-arrow { color: #d92465; font-weight: 600; }
+        .relative {
+          font-size: 0.82em; font-weight: 600; color: #d92465;
+          background: rgba(217,36,101,0.08); padding: 1px 7px;
+          border-radius: 8px; white-space: nowrap;
         }
-        .date-arrow {
-          color: var(--primary-color, #03a9f4);
-          font-weight: 600;
+
+        /* Compact mode */
+        .booking-compact {
+          display: flex; align-items: center; gap: 12px;
+          padding: 8px 12px; margin-bottom: 4px;
+          border-left: 3px solid #757575;
+          border-radius: 8px;
+          background: var(--card-background-color, #fff);
+          border-top: 1px solid var(--divider-color, #e8e8e8);
+          border-right: 1px solid var(--divider-color, #e8e8e8);
+          border-bottom: 1px solid var(--divider-color, #e8e8e8);
+          font-size: 0.88em;
+          transition: box-shadow 0.2s, border-color 0.2s;
         }
+        .compact-renter {
+          font-weight: 600; color: var(--primary-text-color);
+          min-width: 70px; flex-shrink: 0;
+        }
+        .compact-dates {
+          color: var(--secondary-text-color); flex: 1;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .compact-days { color: var(--secondary-text-color); opacity: 0.7; flex-shrink: 0; }
+        .compact-earnings { font-weight: 700; color: var(--primary-text-color); flex-shrink: 0; }
+
+        /* Section dividers */
         .section-divider {
-          height: 1px;
-          background: var(--divider-color, #e0e0e0);
-          margin: 16px 0 8px;
+          height: 1px; background: var(--divider-color, #e0e0e0); margin: 14px 0 6px;
         }
         .section-label {
-          font-size: 0.78em;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: var(--secondary-text-color);
-          padding: 0 2px 8px;
+          font-size: 0.72em; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.1em; color: var(--secondary-text-color);
+          padding: 0 2px 6px; opacity: 0.7;
         }
+
+        /* Footer */
+        .card-footer {
+          padding: 6px 16px 12px; text-align: right;
+          font-size: 0.7em; color: var(--secondary-text-color); opacity: 0.5;
+        }
+
+        /* Empty state */
         .empty {
-          text-align: center;
-          padding: 32px 16px;
-          color: var(--secondary-text-color);
-          font-style: italic;
+          text-align: center; padding: 32px 16px;
+          color: var(--secondary-text-color); font-style: italic;
         }
       </style>
     `;
