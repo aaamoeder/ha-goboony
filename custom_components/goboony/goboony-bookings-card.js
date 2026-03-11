@@ -1,151 +1,93 @@
 class GoboonyBookingsCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
-    if (!this._rendered) this._render();
+    if (this._form) this._form.hass = hass;
   }
 
   setConfig(config) {
     this._config = { ...config };
-    if (this._rendered) this._render();
+    this._render();
+  }
+
+  get _schema() {
+    return [
+      {
+        name: "entity",
+        required: true,
+        selector: { entity: { domain: "sensor" } },
+      },
+      {
+        name: "title",
+        selector: { text: {} },
+      },
+      {
+        name: "show_statuses",
+        selector: {
+          select: {
+            multiple: true,
+            custom_value: false,
+            mode: "list",
+            options: [
+              { value: "confirmed", label: "Confirmed" },
+              { value: "accepted", label: "Accepted" },
+              { value: "request", label: "Requests" },
+              { value: "inquiry", label: "Inquiries" },
+              { value: "message", label: "Messages" },
+              { value: "modified", label: "Modified" },
+            ],
+          },
+        },
+      },
+      {
+        name: "show_earnings",
+        default: true,
+        selector: { boolean: {} },
+      },
+      {
+        name: "show_days",
+        default: true,
+        selector: { boolean: {} },
+      },
+    ];
+  }
+
+  _computeLabel(schema) {
+    const labels = {
+      entity: "Entity",
+      title: "Title",
+      show_statuses: "Show statuses",
+      show_earnings: "Show earnings",
+      show_days: "Show number of days",
+    };
+    return labels[schema.name] || schema.name;
   }
 
   _render() {
-    this._rendered = true;
-    const cfg = this._config || {};
-
-    this.innerHTML = `
-      <style>
-        .editor-row {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          margin-bottom: 16px;
-        }
-        .editor-row label {
-          font-weight: 500;
-          font-size: 0.9em;
-          color: var(--primary-text-color);
-        }
-        .editor-row select, .editor-row input {
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color, #ccc);
-          border-radius: 8px;
-          font-size: 0.95em;
-          background: var(--card-background-color, #fff);
-          color: var(--primary-text-color);
-          font-family: inherit;
-        }
-        .editor-row .hint {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-        }
-        .status-checkboxes {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px 16px;
-        }
-        .status-cb {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.9em;
-          font-weight: 400;
-          color: var(--primary-text-color);
-          cursor: pointer;
-        }
-        .editor-toggle {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 12px;
-        }
-        .editor-toggle label {
-          font-size: 0.9em;
-          color: var(--primary-text-color);
-        }
-      </style>
-
-      <div class="editor-row">
-        <label>Entity</label>
-        <select id="entity">
-          ${this._entityOptions(cfg.entity)}
-        </select>
-        <span class="hint">Select the Goboony total bookings sensor</span>
-      </div>
-
-      <div class="editor-row">
-        <label>Title</label>
-        <input id="title" type="text" value="${cfg.title || "Goboony Bookings"}" placeholder="Goboony Bookings" />
-      </div>
-
-      <div class="editor-row">
-        <label>Show statuses</label>
-        <div class="status-checkboxes">
-          <label class="status-cb"><input type="checkbox" id="status_confirmed" ${this._isStatusEnabled(cfg, "confirmed") ? "checked" : ""} /> Confirmed</label>
-          <label class="status-cb"><input type="checkbox" id="status_accepted" ${this._isStatusEnabled(cfg, "accepted") ? "checked" : ""} /> Accepted</label>
-          <label class="status-cb"><input type="checkbox" id="status_request" ${this._isStatusEnabled(cfg, "request") ? "checked" : ""} /> Requests</label>
-          <label class="status-cb"><input type="checkbox" id="status_inquiry" ${this._isStatusEnabled(cfg, "inquiry") ? "checked" : ""} /> Inquiries</label>
-          <label class="status-cb"><input type="checkbox" id="status_message" ${this._isStatusEnabled(cfg, "message") ? "checked" : ""} /> Messages</label>
-          <label class="status-cb"><input type="checkbox" id="status_modified" ${this._isStatusEnabled(cfg, "modified") ? "checked" : ""} /> Modified</label>
-        </div>
-        <span class="hint">Select which booking statuses to display</span>
-      </div>
-
-      <div class="editor-toggle">
-        <input type="checkbox" id="show_earnings" ${cfg.show_earnings !== false ? "checked" : ""} />
-        <label for="show_earnings">Show earnings</label>
-      </div>
-
-      <div class="editor-toggle">
-        <input type="checkbox" id="show_days" ${cfg.show_days !== false ? "checked" : ""} />
-        <label for="show_days">Show number of days</label>
-      </div>
-    `;
-
-    this.querySelector("#entity").addEventListener("change", (e) => this._update("entity", e.target.value));
-    this.querySelector("#title").addEventListener("input", (e) => this._update("title", e.target.value));
-    for (const key of ["confirmed", "accepted", "request", "inquiry", "message", "modified"]) {
-      this.querySelector(`#status_${key}`).addEventListener("change", (e) => this._updateStatus(key, e.target.checked));
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (s) => this._computeLabel(s);
+      this._form.addEventListener("value-changed", (ev) => {
+        const newConfig = ev.detail.value;
+        this._config = newConfig;
+        const event = new CustomEvent("config-changed", {
+          detail: { config: newConfig },
+        });
+        this.dispatchEvent(event);
+      });
+      this.appendChild(this._form);
     }
-    this.querySelector("#show_earnings").addEventListener("change", (e) => this._update("show_earnings", e.target.checked));
-    this.querySelector("#show_days").addEventListener("change", (e) => this._update("show_days", e.target.checked));
-  }
 
-  _entityOptions(selected) {
-    if (!this._hass) return `<option value="${selected || ""}">${selected || ""}</option>`;
-    const entities = Object.keys(this._hass.states)
-      .filter(e => e.startsWith("sensor.goboony"))
-      .sort();
-    // Also include the current selection if not in list
-    if (selected && !entities.includes(selected)) {
-      entities.unshift(selected);
-    }
-    return entities.map(e =>
-      `<option value="${e}" ${e === selected ? "selected" : ""}>${this._hass.states[e]?.attributes?.friendly_name || e}</option>`
-    ).join("");
-  }
+    // Ensure defaults for ha-form data
+    const data = {
+      show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_earnings: true,
+      show_days: true,
+      ...this._config,
+    };
 
-  _isStatusEnabled(cfg, key) {
-    // If show_statuses not set, all are enabled by default
-    if (!cfg.show_statuses) return true;
-    return cfg.show_statuses.includes(key);
-  }
-
-  _updateStatus(key, checked) {
-    const current = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
-    let updated;
-    if (checked) {
-      updated = current.includes(key) ? [...current] : [...current, key];
-    } else {
-      updated = current.filter(s => s !== key);
-    }
-    this._update("show_statuses", updated);
-  }
-
-  _update(key, value) {
-    this._config = { ...this._config, [key]: value };
-    const event = new CustomEvent("config-changed", { detail: { config: this._config } });
-    this.dispatchEvent(event);
+    this._form.hass = this._hass;
+    this._form.data = data;
+    this._form.schema = this._schema;
   }
 }
 
@@ -227,9 +169,9 @@ class GoboonyBookingsCard extends HTMLElement {
     } else {
       for (const b of filtered) {
         const si = this._statusInfo(b.status);
-        const dates = b.check_in ? `${b.check_in}` : b.dates || "—";
+        const dates = b.check_in ? `${b.check_in}` : b.dates || "\u2014";
         const datesTo = b.check_out || "";
-        const earnings = b.earnings != null ? `€${b.earnings.toFixed(2)}` : "—";
+        const earnings = b.earnings != null ? `\u20ac${b.earnings.toFixed(2)}` : "\u2014";
         const days = b.num_days ? `${b.num_days}d` : "";
 
         bookingRows += `
@@ -249,7 +191,7 @@ class GoboonyBookingsCard extends HTMLElement {
                 <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,2 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
                 <div class="date-range">
                   <span>${dates}</span>
-                  ${datesTo ? `<span class="date-arrow">→</span><span>${datesTo}</span>` : ""}
+                  ${datesTo ? `<span class="date-arrow">\u2192</span><span>${datesTo}</span>` : ""}
                 </div>
               </div>
               ${days && this._config.show_days !== false ? `<div class="days"><svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></svg><span>${days}</span></div>` : ""}
@@ -268,7 +210,7 @@ class GoboonyBookingsCard extends HTMLElement {
           </div>
           <div class="header-stats">
             <span class="stat">${confirmed.length} confirmed</span>
-            <span class="stat total">€${totalEarnings.toFixed(2)}</span>
+            <span class="stat total">\u20ac${totalEarnings.toFixed(2)}</span>
           </div>
         </div>
         <div class="card-content-custom">
@@ -398,11 +340,9 @@ class GoboonyBookingsCard extends HTMLElement {
         }
       </style>
     `;
-
   }
 
   _extractStartDate(booking) {
-    // Try check_in first (e.g. "Mon 27 Apr 2:00 PM")
     const ci = booking.check_in;
     if (ci) {
       const m = ci.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
@@ -412,7 +352,6 @@ class GoboonyBookingsCard extends HTMLElement {
         return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
       }
     }
-    // Try dates string (e.g. "Apr 27 - May 1, 2026")
     const ds = booking.dates;
     if (ds) {
       const m = ds.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/i);
