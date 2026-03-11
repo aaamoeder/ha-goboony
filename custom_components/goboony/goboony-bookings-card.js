@@ -131,7 +131,8 @@ class GoboonyBookingsCard extends HTMLElement {
   _statusInfo(status) {
     const map = {
       confirmed: { label: "Confirmed", icon: "\u2713", color: "#4CAF50", bg: "#E8F5E9" },
-      request_accepted: { label: "Accepted", icon: "\u2713", color: "#4CAF50", bg: "#E8F5E9" },
+      accepted: { label: "Accepted", icon: "\u2713", color: "#2196F3", bg: "#E3F2FD" },
+      request_accepted: { label: "Accepted", icon: "\u2713", color: "#2196F3", bg: "#E3F2FD" },
       request: { label: "Request", icon: "\u23F3", color: "#FF9800", bg: "#FFF3E0" },
       inquiry: { label: "Inquiry", icon: "\uD83D\uDCAC", color: "#2196F3", bg: "#E3F2FD" },
       message: { label: "Message", icon: "\uD83D\uDCAC", color: "#2196F3", bg: "#E3F2FD" },
@@ -166,6 +167,7 @@ class GoboonyBookingsCard extends HTMLElement {
   _statusEnabled(status, showStatuses) {
     const map = {
       confirmed: "confirmed",
+      accepted: "accepted",
       request_accepted: "accepted",
       request: "request",
       inquiry: "inquiry",
@@ -180,7 +182,7 @@ class GoboonyBookingsCard extends HTMLElement {
     const now = new Date();
     const todayStr = now.toISOString().split("T")[0];
     for (const b of bookings) {
-      if (b.status !== "confirmed" && b.status !== "request_accepted") continue;
+      if (b.status !== "confirmed" && b.status !== "accepted" && b.status !== "request_accepted") continue;
       const startDate = this._extractStartDate(b);
       let endDate = null;
       if (b.check_out) {
@@ -217,7 +219,7 @@ class GoboonyBookingsCard extends HTMLElement {
     }
 
     const bookings = state.attributes.bookings || [];
-    const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "request_accepted");
+    const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted");
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
 
     // Review entity data

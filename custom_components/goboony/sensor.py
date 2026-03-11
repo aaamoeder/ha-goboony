@@ -78,7 +78,7 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get("bookings", [])
 
     def _get_confirmed_bookings(self) -> list[dict]:
-        return [b for b in self._get_bookings() if b.get("status") == "confirmed"]
+        return [b for b in self._get_bookings() if b.get("status") in ("confirmed", "accepted", "request_accepted")]
 
     def _get_availability(self) -> dict:
         if not self.coordinator.data:
@@ -122,8 +122,8 @@ class GoboonyTotalBookingsSensor(GoboonyBaseSensor):
                 "url": b.get("url", ""),
             })
         return {
-            "confirmed": len([b for b in bookings if b.get("status") == "confirmed"]),
-            "pending": len([b for b in bookings if b.get("status") in ("request", "request_accepted")]),
+            "confirmed": len([b for b in bookings if b.get("status") in ("confirmed", "accepted", "request_accepted")]),
+            "pending": len([b for b in bookings if b.get("status") in ("request",)]),
             "inquiries": len([b for b in bookings if b.get("status") in ("inquiry", "message")]),
             "bookings": booking_list,
         }

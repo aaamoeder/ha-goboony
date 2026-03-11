@@ -143,7 +143,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
         bookings = self.coordinator.data.get("bookings", [])
         for booking in bookings:
             status = booking.get("status", "")
-            if status not in ("confirmed", "request_accepted"):
+            if status not in ("confirmed", "accepted", "request_accepted"):
                 continue
 
             renter = booking.get("renter", "Unknown")

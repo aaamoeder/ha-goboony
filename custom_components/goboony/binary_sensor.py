@@ -91,7 +91,7 @@ class GoboonyBinaryBaseSensor(CoordinatorEntity, BinarySensorEntity):
     def _get_confirmed_bookings(self) -> list[dict]:
         return [
             b for b in self._get_bookings()
-            if b.get("status") in ("confirmed", "request_accepted")
+            if b.get("status") in ("confirmed", "accepted", "request_accepted")
         ]
 
 
