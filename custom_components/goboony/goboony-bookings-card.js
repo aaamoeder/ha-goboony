@@ -269,8 +269,14 @@ class GoboonyBookingsCard extends HTMLElement {
     const showStatuses = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
     const filtered = bookings.filter(b => this._statusEnabled(b.status, showStatuses));
 
-    // Sort by start date (earliest first)
+    // Group by status category, then sort by date within each group
+    const statusOrder = ["confirmed", "accepted", "request_accepted", "request", "inquiry", "message", "dates_changed_by_admin"];
     filtered.sort((a, b) => {
+      const ia = statusOrder.indexOf(a.status);
+      const ib = statusOrder.indexOf(b.status);
+      const oa = ia >= 0 ? ia : 99;
+      const ob = ib >= 0 ? ib : 99;
+      if (oa !== ob) return oa - ob;
       const da = this._extractStartDate(a);
       const db = this._extractStartDate(b);
       if (!da && !db) return 0;
@@ -279,12 +285,32 @@ class GoboonyBookingsCard extends HTMLElement {
       return da - db;
     });
 
-    // Build booking rows
+    // Section labels for status groups
+    const sectionLabels = {
+      confirmed: "Confirmed",
+      accepted: "Accepted",
+      request_accepted: "Accepted",
+      request: "Requests",
+      inquiry: "Inquiries",
+      message: "Messages",
+      dates_changed_by_admin: "Modified",
+    };
+
+    // Build booking rows with section dividers
     let bookingRows = "";
     if (filtered.length === 0) {
       bookingRows = `<div class="empty">No bookings found</div>`;
     } else {
+      let lastSection = "";
       for (const b of filtered) {
+        const section = sectionLabels[b.status] || b.status;
+        if (section !== lastSection) {
+          if (lastSection !== "") {
+            bookingRows += `<div class="section-divider"></div>`;
+          }
+          bookingRows += `<div class="section-label">${section}</div>`;
+          lastSection = section;
+        }
         const si = this._statusInfo(b.status);
         const dates = b.check_in ? `${b.check_in}` : b.dates || "\u2014";
         const datesTo = b.check_out || "";
@@ -543,6 +569,19 @@ class GoboonyBookingsCard extends HTMLElement {
         .date-arrow {
           color: var(--primary-color, #03a9f4);
           font-weight: 600;
+        }
+        .section-divider {
+          height: 1px;
+          background: var(--divider-color, #e0e0e0);
+          margin: 16px 0 8px;
+        }
+        .section-label {
+          font-size: 0.78em;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--secondary-text-color);
+          padding: 0 2px 8px;
         }
         .empty {
           text-align: center;
