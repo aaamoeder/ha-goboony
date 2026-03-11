@@ -470,16 +470,16 @@ class GoboonyBookingsCard extends HTMLElement {
         /* Booking links */
         a.booking-link, div.booking-link-none { display: block; text-decoration: none; color: inherit; }
         a.booking-link:hover .booking, a.booking-link:hover .booking-compact {
-          box-shadow: 0 2px 12px rgba(0,0,0,0.10); border-color: #d92465;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.10); background: rgba(217,36,101,0.04);
         }
         a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
 
         /* Normal booking card */
         .booking {
           background: var(--card-background-color, #fff);
-          border: 1px solid var(--divider-color, #e8e8e8);
-          border-left: 3px solid #757575;
-          border-radius: 10px; padding: 12px 14px;
+          border: none;
+          border-left: 4px solid #757575;
+          border-radius: 0; padding: 12px 14px;
           margin-bottom: 8px; transition: box-shadow 0.2s, border-color 0.2s;
         }
         .booking-header {
@@ -514,12 +514,12 @@ class GoboonyBookingsCard extends HTMLElement {
         .booking-compact {
           display: flex; align-items: center; gap: 12px;
           padding: 8px 12px; margin-bottom: 4px;
-          border-left: 3px solid #757575;
-          border-radius: 8px;
+          border-left: 4px solid #757575;
+          border-radius: 0;
           background: var(--card-background-color, #fff);
-          border-top: 1px solid var(--divider-color, #e8e8e8);
-          border-right: 1px solid var(--divider-color, #e8e8e8);
-          border-bottom: 1px solid var(--divider-color, #e8e8e8);
+          border-top: none;
+          border-right: none;
+          border-bottom: none;
           font-size: 0.88em;
           transition: box-shadow 0.2s, border-color 0.2s;
         }
