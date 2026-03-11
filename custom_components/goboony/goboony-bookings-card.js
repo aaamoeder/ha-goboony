@@ -356,7 +356,6 @@ class GoboonyBookingsCard extends HTMLElement {
             ${reviewHtml}
           </div>
           <div class="header-stats">
-            <span class="stat">${confirmed.length} confirmed</span>
             <span class="stat total">\u20ac${totalEarnings.toFixed(2)}</span>
           </div>
         </div>
