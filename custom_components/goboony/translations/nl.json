@@ -32,6 +32,19 @@
       "reauth_failed": "Opnieuw verifiëren mislukt"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Goboony Opties",
+        "data": {
+          "scan_interval": "Update interval (minuten)"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak data van Goboony ophalen (15-1440 minuten)"
+        }
+      }
+    }
+  },
   "exceptions": {
     "invalid_auth": {
       "message": "Authenticatie mislukt. Verifieer opnieuw."

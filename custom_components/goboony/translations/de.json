@@ -32,6 +32,19 @@
       "reauth_failed": "Erneute Authentifizierung fehlgeschlagen"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Goboony Optionen",
+        "data": {
+          "scan_interval": "Aktualisierungsintervall (Minuten)"
+        },
+        "data_description": {
+          "scan_interval": "Wie oft Daten von Goboony abgerufen werden (15-1440 Minuten)"
+        }
+      }
+    }
+  },
   "exceptions": {
     "invalid_auth": {
       "message": "Authentifizierung fehlgeschlagen. Bitte erneut authentifizieren."

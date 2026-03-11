@@ -32,6 +32,19 @@
       "reauth_failed": "Re-authentication failed"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Goboony Options",
+        "data": {
+          "scan_interval": "Update interval (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch data from Goboony (15-1440 minutes)"
+        }
+      }
+    }
+  },
   "exceptions": {
     "invalid_auth": {
       "message": "Authentication failed. Please re-authenticate."

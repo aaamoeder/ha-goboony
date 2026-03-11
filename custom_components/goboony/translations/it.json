@@ -32,6 +32,19 @@
       "reauth_failed": "Riautenticazione fallita"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Goboony",
+        "data": {
+          "scan_interval": "Intervallo di aggiornamento (minuti)"
+        },
+        "data_description": {
+          "scan_interval": "Frequenza di recupero dati da Goboony (15-1440 minuti)"
+        }
+      }
+    }
+  },
   "exceptions": {
     "invalid_auth": {
       "message": "Autenticazione fallita. Riautenticati."

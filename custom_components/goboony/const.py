@@ -10,4 +10,5 @@ BASE_URL = "https://www.goboony.com"
 URL_SIGN_IN = f"{BASE_URL}/users/sign_in"
 URL_DASHBOARD_BOOKINGS = f"{BASE_URL}/dashboard/bookings"
 
+CONF_SCAN_INTERVAL = "scan_interval"
 DEFAULT_SCAN_INTERVAL = 3600  # 1 hour in seconds

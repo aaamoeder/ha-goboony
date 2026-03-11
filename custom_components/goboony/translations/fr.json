@@ -32,6 +32,19 @@
       "reauth_failed": "Réauthentification échouée"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Goboony",
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence de récupération des données Goboony (15-1440 minutes)"
+        }
+      }
+    }
+  },
   "exceptions": {
     "invalid_auth": {
       "message": "L'authentification a échoué. Veuillez vous réauthentifier."
