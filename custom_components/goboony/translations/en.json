@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Goboony",
+        "description": "Enter your Goboony owner credentials.",
+        "data": {
+          "email": "Email address",
+          "password": "Password",
+          "listing_id": "Listing ID"
+        },
+        "data_description": {
+          "listing_id": "Your Goboony listing ID (found in the URL of your listing page)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid credentials",
+      "cannot_connect": "Cannot connect to Goboony"
+    },
+    "abort": {
+      "already_configured": "This listing is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bookings": {
+        "name": "Total bookings"
+      },
+      "confirmed_bookings": {
+        "name": "Confirmed bookings"
+      },
+      "next_booking": {
+        "name": "Next booking"
+      },
+      "next_booking_days": {
+        "name": "Days until next booking"
+      },
+      "total_earnings": {
+        "name": "Total earnings"
+      },
+      "base_rate": {
+        "name": "Base rate"
+      },
+      "peak_rate": {
+        "name": "Peak rate"
+      },
+      "booked_days": {
+        "name": "Booked days"
+      },
+      "blocked_days": {
+        "name": "Blocked days"
+      },
+      "available_days": {
+        "name": "Available days"
+      },
+      "blocked_periods": {
+        "name": "Blocked periods"
+      }
+    },
+    "calendar": {
+      "bookings_calendar": {
+        "name": "Bookings calendar"
+      }
+    }
+  }
+}

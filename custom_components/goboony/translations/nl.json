@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Goboony",
+        "description": "Voer je Goboony eigenaarsgegevens in.",
+        "data": {
+          "email": "E-mailadres",
+          "password": "Wachtwoord",
+          "listing_id": "Advertentie ID"
+        },
+        "data_description": {
+          "listing_id": "Je Goboony advertentie ID (te vinden in de URL van je advertentiepagina)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldige inloggegevens",
+      "cannot_connect": "Kan geen verbinding maken met Goboony"
+    },
+    "abort": {
+      "already_configured": "Deze advertentie is al geconfigureerd"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bookings": {
+        "name": "Totaal boekingen"
+      },
+      "confirmed_bookings": {
+        "name": "Bevestigde boekingen"
+      },
+      "next_booking": {
+        "name": "Volgende boeking"
+      },
+      "next_booking_days": {
+        "name": "Dagen tot volgende boeking"
+      },
+      "total_earnings": {
+        "name": "Totale inkomsten"
+      },
+      "base_rate": {
+        "name": "Basistarief"
+      },
+      "peak_rate": {
+        "name": "Piektarief"
+      },
+      "booked_days": {
+        "name": "Geboekte dagen"
+      },
+      "blocked_days": {
+        "name": "Geblokkeerde dagen"
+      },
+      "available_days": {
+        "name": "Beschikbare dagen"
+      },
+      "blocked_periods": {
+        "name": "Geblokkeerde periodes"
+      }
+    },
+    "calendar": {
+      "bookings_calendar": {
+        "name": "Boekingskalender"
+      }
+    }
+  }
+}
