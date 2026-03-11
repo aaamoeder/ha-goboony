@@ -71,6 +71,12 @@
       },
       "blocked_periods": {
         "name": "Geblokkeerde periodes"
+      },
+      "occupancy_rate": {
+        "name": "Bezettingsgraad"
+      },
+      "reviews": {
+        "name": "Beoordelingen"
       }
     },
     "calendar": {

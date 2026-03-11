@@ -71,6 +71,12 @@
       },
       "blocked_periods": {
         "name": "Blockierte Zeiträume"
+      },
+      "occupancy_rate": {
+        "name": "Auslastung"
+      },
+      "reviews": {
+        "name": "Bewertungen"
       }
     },
     "calendar": {

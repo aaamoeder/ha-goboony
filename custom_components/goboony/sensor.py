@@ -38,6 +38,8 @@ async def async_setup_entry(
         GoboonyBlockedDaysSensor(coordinator, entry, listing_id),
         GoboonyAvailableDaysSensor(coordinator, entry, listing_id),
         GoboonyBlockedPeriodsSensor(coordinator, entry, listing_id),
+        GoboonyOccupancyRateSensor(coordinator, entry, listing_id),
+        GoboonyReviewsSensor(coordinator, entry, listing_id),
     ]
 
     async_add_entities(entities)
@@ -115,6 +117,7 @@ class GoboonyTotalBookingsSensor(GoboonyBaseSensor):
                 "check_out": b.get("check_out", ""),
                 "num_days": b.get("num_days"),
                 "earnings": b.get("earnings"),
+                "url": b.get("url", ""),
             })
         return {
             "confirmed": len([b for b in bookings if b.get("status") == "confirmed"]),
@@ -405,4 +408,55 @@ class GoboonyBlockedPeriodsSensor(GoboonyBaseSensor):
         return {
             f"period_{i+1}": p.get("name", "Unknown")
             for i, p in enumerate(periods)
+        }
+
+
+class GoboonyOccupancyRateSensor(GoboonyBaseSensor):
+    """Occupancy rate as a percentage of booked vs available days."""
+
+    _attr_icon = "mdi:percent-circle"
+    _attr_native_unit_of_measurement = "%"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_translation_key = "occupancy_rate"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._listing_id}_occupancy_rate"
+
+    @property
+    def native_value(self) -> float:
+        avail = self._get_availability()
+        booked = avail.get("booked_dates", [])
+        available = avail.get("available_dates", [])
+        total = len(booked) + len(available)
+        if total == 0:
+            return 0.0
+        return round(len(booked) / total * 100, 1)
+
+
+class GoboonyReviewsSensor(GoboonyBaseSensor):
+    """Listing rating/reviews."""
+
+    _attr_icon = "mdi:star"
+    _attr_translation_key = "reviews"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._listing_id}_reviews"
+
+    @property
+    def native_value(self) -> float | None:
+        if not self.coordinator.data:
+            return None
+        listing = self.coordinator.data.get("listing", {})
+        return listing.get("rating")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.coordinator.data:
+            return {}
+        listing = self.coordinator.data.get("listing", {})
+        return {
+            "review_count": listing.get("review_count"),
+            "times_hired": listing.get("times_hired"),
         }

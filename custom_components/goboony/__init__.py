@@ -19,7 +19,7 @@ PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 
 CARD_JS_URL = f"/{DOMAIN}/goboony-bookings-card.js"
 CARD_JS_PATH = Path(__file__).parent / "goboony-bookings-card.js"
-CARD_VERSION = "1.3.0"
+CARD_VERSION = "1.4.0"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

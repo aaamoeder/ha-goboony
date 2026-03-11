@@ -71,6 +71,12 @@
       },
       "blocked_periods": {
         "name": "Périodes bloquées"
+      },
+      "occupancy_rate": {
+        "name": "Taux d'occupation"
+      },
+      "reviews": {
+        "name": "Avis"
       }
     },
     "calendar": {
