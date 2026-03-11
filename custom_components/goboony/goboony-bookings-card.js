@@ -39,6 +39,20 @@ class GoboonyBookingsCardEditor extends HTMLElement {
           font-size: 0.8em;
           color: var(--secondary-text-color);
         }
+        .status-checkboxes {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 16px;
+        }
+        .status-cb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.9em;
+          font-weight: 400;
+          color: var(--primary-text-color);
+          cursor: pointer;
+        }
         .editor-toggle {
           display: flex;
           align-items: center;
@@ -65,14 +79,16 @@ class GoboonyBookingsCardEditor extends HTMLElement {
       </div>
 
       <div class="editor-row">
-        <label>Filter</label>
-        <select id="default_filter">
-          <option value="all" ${cfg.default_filter === "all" || !cfg.default_filter ? "selected" : ""}>All</option>
-          <option value="confirmed" ${cfg.default_filter === "confirmed" ? "selected" : ""}>Confirmed</option>
-          <option value="request" ${cfg.default_filter === "request" ? "selected" : ""}>Requests</option>
-          <option value="message" ${cfg.default_filter === "message" ? "selected" : ""}>Messages</option>
-        </select>
-        <span class="hint">Which bookings to show</span>
+        <label>Show statuses</label>
+        <div class="status-checkboxes">
+          <label class="status-cb"><input type="checkbox" id="status_confirmed" ${this._isStatusEnabled(cfg, "confirmed") ? "checked" : ""} /> Confirmed</label>
+          <label class="status-cb"><input type="checkbox" id="status_accepted" ${this._isStatusEnabled(cfg, "accepted") ? "checked" : ""} /> Accepted</label>
+          <label class="status-cb"><input type="checkbox" id="status_request" ${this._isStatusEnabled(cfg, "request") ? "checked" : ""} /> Requests</label>
+          <label class="status-cb"><input type="checkbox" id="status_inquiry" ${this._isStatusEnabled(cfg, "inquiry") ? "checked" : ""} /> Inquiries</label>
+          <label class="status-cb"><input type="checkbox" id="status_message" ${this._isStatusEnabled(cfg, "message") ? "checked" : ""} /> Messages</label>
+          <label class="status-cb"><input type="checkbox" id="status_modified" ${this._isStatusEnabled(cfg, "modified") ? "checked" : ""} /> Modified</label>
+        </div>
+        <span class="hint">Select which booking statuses to display</span>
       </div>
 
       <div class="editor-toggle">
@@ -88,7 +104,9 @@ class GoboonyBookingsCardEditor extends HTMLElement {
 
     this.querySelector("#entity").addEventListener("change", (e) => this._update("entity", e.target.value));
     this.querySelector("#title").addEventListener("input", (e) => this._update("title", e.target.value));
-    this.querySelector("#default_filter").addEventListener("change", (e) => this._update("default_filter", e.target.value));
+    for (const key of ["confirmed", "accepted", "request", "inquiry", "message", "modified"]) {
+      this.querySelector(`#status_${key}`).addEventListener("change", (e) => this._updateStatus(key, e.target.checked));
+    }
     this.querySelector("#show_earnings").addEventListener("change", (e) => this._update("show_earnings", e.target.checked));
     this.querySelector("#show_days").addEventListener("change", (e) => this._update("show_days", e.target.checked));
   }
@@ -105,6 +123,23 @@ class GoboonyBookingsCardEditor extends HTMLElement {
     return entities.map(e =>
       `<option value="${e}" ${e === selected ? "selected" : ""}>${this._hass.states[e]?.attributes?.friendly_name || e}</option>`
     ).join("");
+  }
+
+  _isStatusEnabled(cfg, key) {
+    // If show_statuses not set, all are enabled by default
+    if (!cfg.show_statuses) return true;
+    return cfg.show_statuses.includes(key);
+  }
+
+  _updateStatus(key, checked) {
+    const current = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
+    let updated;
+    if (checked) {
+      updated = current.includes(key) ? [...current] : [...current, key];
+    } else {
+      updated = current.filter(s => s !== key);
+    }
+    this._update("show_statuses", updated);
   }
 
   _update(key, value) {
@@ -140,7 +175,7 @@ class GoboonyBookingsCard extends HTMLElement {
     return {
       entity: "sensor.goboony_total_bookings",
       title: "Goboony Bookings",
-      default_filter: "all",
+      show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
       show_earnings: true,
       show_days: true,
     };
@@ -171,11 +206,9 @@ class GoboonyBookingsCard extends HTMLElement {
     const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "request_accepted");
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
 
-    // Filter bookings based on config
-    const activeFilter = this._config.default_filter || "all";
-    const filtered = activeFilter === "all"
-      ? [...bookings]
-      : bookings.filter(b => this._filterKey(b.status) === activeFilter);
+    // Filter bookings based on enabled statuses
+    const showStatuses = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
+    const filtered = bookings.filter(b => this._statusEnabled(b.status, showStatuses));
 
     // Sort by start date (earliest first)
     filtered.sort((a, b) => {
@@ -393,10 +426,17 @@ class GoboonyBookingsCard extends HTMLElement {
     return null;
   }
 
-  _filterKey(status) {
-    if (status === "confirmed" || status === "request_accepted" || status === "dates_changed_by_admin") return "confirmed";
-    if (status === "request") return "request";
-    return "message";
+  _statusEnabled(status, showStatuses) {
+    const map = {
+      confirmed: "confirmed",
+      request_accepted: "accepted",
+      request: "request",
+      inquiry: "inquiry",
+      message: "message",
+      dates_changed_by_admin: "modified",
+    };
+    const key = map[status] || "message";
+    return showStatuses.includes(key);
   }
 }
 
