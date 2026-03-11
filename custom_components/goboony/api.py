@@ -380,13 +380,26 @@ class GoboonyApi:
             if match:
                 info["times_hired"] = int(match.group(1))
 
-        # Rating
-        rating_el = soup.find(attrs={"class": re.compile(r"rating|stars")})
-        if rating_el:
-            rating_text = rating_el.get_text(strip=True)
-            match = re.search(r"(\d+(?:\.\d+)?)/5|(\d+(?:\.\d+)?)", rating_text)
-            if match:
-                info["rating"] = float(match.group(1) or match.group(2))
+        # Rating from JSON-LD structured data
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                import json
+                ld = json.loads(script.string or "")
+                if isinstance(ld, dict) and "aggregateRating" in ld:
+                    ar = ld["aggregateRating"]
+                    info["rating"] = float(ar.get("ratingValue", 0))
+                    info["review_count"] = int(ar.get("reviewCount", info.get("review_count", 0)))
+                    break
+            except (ValueError, TypeError, json.JSONDecodeError):
+                pass
+
+        # Fallback: try text pattern "X/5 based on Y reviews"
+        if "rating" not in info:
+            rating_text = soup.find(string=re.compile(r"\d+(\.\d+)?/5"))
+            if rating_text:
+                match = re.search(r"(\d+(?:\.\d+)?)/5", rating_text)
+                if match:
+                    info["rating"] = float(match.group(1))
 
         return info
 
