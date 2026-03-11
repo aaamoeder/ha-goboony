@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -18,6 +19,7 @@ PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 
 CARD_JS_URL = f"/{DOMAIN}/goboony-bookings-card.js"
 CARD_JS_PATH = Path(__file__).parent / "goboony-bookings-card.js"
+CARD_VERSION = "1.3.0"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -25,8 +27,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register the custom card JS (only once)
     hass.data.setdefault(DOMAIN, {})
     if "frontend_loaded" not in hass.data[DOMAIN]:
-        hass.http.register_static_path(CARD_JS_URL, str(CARD_JS_PATH), cache_headers=False)
-        add_extra_js_url(hass, CARD_JS_URL)
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(CARD_JS_URL, str(CARD_JS_PATH), cache_headers=False)]
+        )
+        add_extra_js_url(hass, f"{CARD_JS_URL}?v={CARD_VERSION}")
         hass.data[DOMAIN]["frontend_loaded"] = True
 
     coordinator = GoboonyCoordinator(hass, entry)
