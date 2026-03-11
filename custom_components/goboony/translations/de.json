@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Goboony",
+        "description": "Gib deine Goboony-Eigentümer-Zugangsdaten ein.",
+        "data": {
+          "email": "E-Mail-Adresse",
+          "password": "Passwort",
+          "listing_id": "Inserat-ID"
+        },
+        "data_description": {
+          "listing_id": "Deine Goboony Inserat-ID (zu finden in der URL deiner Inseratseite)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Goboony erneut authentifizieren",
+        "description": "Deine Goboony-Zugangsdaten sind abgelaufen. Bitte gib sie erneut ein.",
+        "data": {
+          "email": "E-Mail-Adresse",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ungültige Zugangsdaten",
+      "cannot_connect": "Verbindung zu Goboony nicht möglich"
+    },
+    "abort": {
+      "already_configured": "Dieses Inserat ist bereits konfiguriert",
+      "reauth_successful": "Erneute Authentifizierung erfolgreich",
+      "reauth_failed": "Erneute Authentifizierung fehlgeschlagen"
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "Authentifizierung fehlgeschlagen. Bitte erneut authentifizieren."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bookings": {
+        "name": "Buchungen gesamt"
+      },
+      "confirmed_bookings": {
+        "name": "Bestätigte Buchungen"
+      },
+      "next_booking": {
+        "name": "Nächste Buchung"
+      },
+      "next_booking_days": {
+        "name": "Tage bis zur nächsten Buchung"
+      },
+      "total_earnings": {
+        "name": "Gesamteinnahmen"
+      },
+      "base_rate": {
+        "name": "Grundtarif"
+      },
+      "peak_rate": {
+        "name": "Hochtarif"
+      },
+      "booked_days": {
+        "name": "Gebuchte Tage"
+      },
+      "blocked_days": {
+        "name": "Blockierte Tage"
+      },
+      "available_days": {
+        "name": "Verfügbare Tage"
+      },
+      "blocked_periods": {
+        "name": "Blockierte Zeiträume"
+      }
+    },
+    "calendar": {
+      "bookings_calendar": {
+        "name": "Buchungskalender"
+      }
+    }
+  }
+}

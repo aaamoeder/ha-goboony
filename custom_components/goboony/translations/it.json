@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Goboony",
+        "description": "Inserisci le credenziali del tuo account proprietario Goboony.",
+        "data": {
+          "email": "Indirizzo e-mail",
+          "password": "Password",
+          "listing_id": "ID annuncio"
+        },
+        "data_description": {
+          "listing_id": "Il tuo ID annuncio Goboony (visibile nell'URL della pagina del tuo annuncio)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Riautenticazione Goboony",
+        "description": "Le tue credenziali Goboony sono scadute. Inseriscile nuovamente.",
+        "data": {
+          "email": "Indirizzo e-mail",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenziali non valide",
+      "cannot_connect": "Impossibile connettersi a Goboony"
+    },
+    "abort": {
+      "already_configured": "Questo annuncio è già configurato",
+      "reauth_successful": "Riautenticazione riuscita",
+      "reauth_failed": "Riautenticazione fallita"
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "Autenticazione fallita. Riautenticati."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bookings": {
+        "name": "Prenotazioni totali"
+      },
+      "confirmed_bookings": {
+        "name": "Prenotazioni confermate"
+      },
+      "next_booking": {
+        "name": "Prossima prenotazione"
+      },
+      "next_booking_days": {
+        "name": "Giorni alla prossima prenotazione"
+      },
+      "total_earnings": {
+        "name": "Guadagni totali"
+      },
+      "base_rate": {
+        "name": "Tariffa base"
+      },
+      "peak_rate": {
+        "name": "Tariffa alta stagione"
+      },
+      "booked_days": {
+        "name": "Giorni prenotati"
+      },
+      "blocked_days": {
+        "name": "Giorni bloccati"
+      },
+      "available_days": {
+        "name": "Giorni disponibili"
+      },
+      "blocked_periods": {
+        "name": "Periodi bloccati"
+      }
+    },
+    "calendar": {
+      "bookings_calendar": {
+        "name": "Calendario prenotazioni"
+      }
+    }
+  }
+}
