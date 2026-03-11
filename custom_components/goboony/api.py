@@ -345,17 +345,27 @@ class GoboonyApi:
 
     def get_listing_info(self) -> dict:
         """Get public listing information."""
+        import json
+
+        # First load /listings/ID to get the canonical (public) URL
         url = f"{BASE_URL}/listings/{self.listing_id}"
         soup = self._get_page(url)
 
         info = {"listing_id": self.listing_id}
+
+        # Check for canonical URL and re-fetch if different
+        canonical = soup.find("link", rel="canonical")
+        if canonical and canonical.get("href") and canonical["href"] != url:
+            canonical_url = canonical["href"]
+            info["url"] = canonical_url
+            soup = self._get_page(canonical_url)
 
         # Title
         title = soup.find("h1")
         if title:
             info["title"] = title.get_text(strip=True)
 
-        # Rating and review count
+        # Category and location from script data
         for script in soup.find_all("script"):
             text = script.string or ""
             if "listing_id" in text:
@@ -366,12 +376,21 @@ class GoboonyApi:
                 if match:
                     info["location"] = match.group(1)
 
-        # Reviews count
-        review_count = soup.find(string=re.compile(r"\d+\s+reviews?"))
-        if review_count:
-            match = re.search(r"(\d+)", review_count)
+        # Rating and review count from "X/5 based on Y reviews" text
+        rating_text = soup.find(string=re.compile(r"\d+(\.\d+)?/5\s+based\s+on\s+\d+\s+reviews?"))
+        if rating_text:
+            match = re.search(r"(\d+(?:\.\d+)?)/5\s+based\s+on\s+(\d+)\s+reviews?", rating_text)
             if match:
-                info["review_count"] = int(match.group(1))
+                info["rating"] = float(match.group(1))
+                info["review_count"] = int(match.group(2))
+
+        # Fallback for review count from "X Reviews" text
+        if "review_count" not in info:
+            review_el = soup.find(string=re.compile(r"\d+\s+[Rr]eviews?"))
+            if review_el:
+                match = re.search(r"(\d+)", review_el)
+                if match:
+                    info["review_count"] = int(match.group(1))
 
         # Times hired
         hired_text = soup.find(string=re.compile(r"(\d+)\s+times?\s+hired"))
@@ -379,27 +398,6 @@ class GoboonyApi:
             match = re.search(r"(\d+)", hired_text)
             if match:
                 info["times_hired"] = int(match.group(1))
-
-        # Rating from JSON-LD structured data
-        for script in soup.find_all("script", type="application/ld+json"):
-            try:
-                import json
-                ld = json.loads(script.string or "")
-                if isinstance(ld, dict) and "aggregateRating" in ld:
-                    ar = ld["aggregateRating"]
-                    info["rating"] = float(ar.get("ratingValue", 0))
-                    info["review_count"] = int(ar.get("reviewCount", info.get("review_count", 0)))
-                    break
-            except (ValueError, TypeError, json.JSONDecodeError):
-                pass
-
-        # Fallback: try text pattern "X/5 based on Y reviews"
-        if "rating" not in info:
-            rating_text = soup.find(string=re.compile(r"\d+(\.\d+)?/5"))
-            if rating_text:
-                match = re.search(r"(\d+(?:\.\d+)?)/5", rating_text)
-                if match:
-                    info["rating"] = float(match.group(1))
 
         return info
 
