@@ -408,14 +408,13 @@ class GoboonyApi:
         except Exception as err:
             _LOGGER.warning("Failed to get bookings: %s", err)
 
-        # Get booking details for confirmed bookings
+        # Get booking details for all bookings
         for booking in result["bookings"]:
-            if booking.get("status") in ("confirmed", "request_accepted"):
-                try:
-                    detail = self.get_booking_detail(booking["booking_id"])
-                    booking.update(detail)
-                except Exception as err:
-                    _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
+            try:
+                detail = self.get_booking_detail(booking["booking_id"])
+                booking.update(detail)
+            except Exception as err:
+                _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
 
         # Get availability
         try:
