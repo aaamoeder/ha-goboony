@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d92465;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#b01d53;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="200" rx="16" fill="url(#bg)"/>
+  <!-- Campervan icon -->
+  <g transform="translate(120,88)" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-56" y="-16" width="112" height="44" rx="6" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
+    <path d="M-56,-16 L-56,-34 C-56,-40 -51,-45 -45,-45 L8,-45 L32,-16" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
+    <rect x="-44" y="-39" width="22" height="17" rx="3" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
+    <rect x="-12" y="-39" width="16" height="17" rx="3" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
+    <rect x="38" y="-8" width="13" height="14" rx="2" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
+    <circle cx="-32" cy="28" r="13" fill="#fff" stroke="#fff" stroke-width="2"/>
+    <circle cx="-32" cy="28" r="5.5" fill="url(#bg)" stroke="none"/>
+    <circle cx="38" cy="28" r="13" fill="#fff" stroke="#fff" stroke-width="2"/>
+    <circle cx="38" cy="28" r="5.5" fill="url(#bg)" stroke="none"/>
+  </g>
+  <!-- Text -->
+  <text x="220" y="82" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="42" font-weight="700" fill="#fff" letter-spacing="0.5">Goboony</text>
+  <text x="220" y="118" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.85)">for Home Assistant</text>
+  <!-- Tagline -->
+  <text x="220" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="400" fill="rgba(255,255,255,0.6)">Track bookings, earnings, availability &amp; rates from your owner dashboard</text>
+  <!-- HA logo hint -->
+  <g transform="translate(740,40)">
+    <circle cx="0" cy="0" r="24" fill="rgba(255,255,255,0.15)"/>
+    <path d="M0,-13 L-15,1 L-11,1 L-11,11 L-4,11 L-4,5 L4,5 L4,11 L11,11 L11,1 L15,1 Z" fill="rgba(255,255,255,0.7)" stroke="none"/>
+  </g>
+</svg>
