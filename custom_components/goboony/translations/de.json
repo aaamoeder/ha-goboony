@@ -90,6 +90,33 @@
       },
       "reviews": {
         "name": "Bewertungen"
+      },
+      "check_in_countdown": {
+        "name": "Check-in Countdown"
+      }
+    },
+    "binary_sensor": {
+      "currently_rented": {
+        "name": "Derzeit vermietet"
+      },
+      "has_pending_requests": {
+        "name": "Offene Anfragen"
+      },
+      "has_upcoming_booking": {
+        "name": "Anstehende Buchung"
+      },
+      "turnaround": {
+        "name": "Wechseltag"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Daten aktualisieren"
+      }
+    },
+    "image": {
+      "listing_photo": {
+        "name": "Inserat-Foto"
       }
     },
     "calendar": {

@@ -90,6 +90,33 @@
       },
       "reviews": {
         "name": "Beoordelingen"
+      },
+      "check_in_countdown": {
+        "name": "Aftellen check-in"
+      }
+    },
+    "binary_sensor": {
+      "currently_rented": {
+        "name": "Momenteel verhuurd"
+      },
+      "has_pending_requests": {
+        "name": "Openstaande aanvragen"
+      },
+      "has_upcoming_booking": {
+        "name": "Aankomende boeking"
+      },
+      "turnaround": {
+        "name": "Wisseldag"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Gegevens vernieuwen"
+      }
+    },
+    "image": {
+      "listing_photo": {
+        "name": "Advertentiefoto"
       }
     },
     "calendar": {

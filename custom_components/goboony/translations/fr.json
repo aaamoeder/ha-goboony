@@ -90,6 +90,33 @@
       },
       "reviews": {
         "name": "Avis"
+      },
+      "check_in_countdown": {
+        "name": "Compte à rebours check-in"
+      }
+    },
+    "binary_sensor": {
+      "currently_rented": {
+        "name": "Actuellement loué"
+      },
+      "has_pending_requests": {
+        "name": "Demandes en attente"
+      },
+      "has_upcoming_booking": {
+        "name": "Réservation à venir"
+      },
+      "turnaround": {
+        "name": "Jour de rotation"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualiser les données"
+      }
+    },
+    "image": {
+      "listing_photo": {
+        "name": "Photo de l'annonce"
       }
     },
     "calendar": {

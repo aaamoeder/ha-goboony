@@ -90,6 +90,33 @@
       },
       "reviews": {
         "name": "Reviews"
+      },
+      "check_in_countdown": {
+        "name": "Check-in countdown"
+      }
+    },
+    "binary_sensor": {
+      "currently_rented": {
+        "name": "Currently rented"
+      },
+      "has_pending_requests": {
+        "name": "Pending requests"
+      },
+      "has_upcoming_booking": {
+        "name": "Upcoming booking"
+      },
+      "turnaround": {
+        "name": "Turnaround"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh data"
+      }
+    },
+    "image": {
+      "listing_photo": {
+        "name": "Listing photo"
       }
     },
     "calendar": {

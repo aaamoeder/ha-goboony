@@ -6,6 +6,7 @@ import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -40,6 +41,7 @@ async def async_setup_entry(
         GoboonyBlockedPeriodsSensor(coordinator, entry, listing_id),
         GoboonyOccupancyRateSensor(coordinator, entry, listing_id),
         GoboonyReviewsSensor(coordinator, entry, listing_id),
+        GoboonyCheckInCountdownSensor(coordinator, entry, listing_id),
     ]
 
     async_add_entities(entities)
@@ -288,6 +290,7 @@ class GoboonyBaseRateSensor(GoboonyBaseSensor):
 
     _attr_icon = "mdi:currency-eur"
     _attr_native_unit_of_measurement = "EUR"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "base_rate"
 
     @property
@@ -317,6 +320,7 @@ class GoboonyPeakRateSensor(GoboonyBaseSensor):
 
     _attr_icon = "mdi:cash-plus"
     _attr_native_unit_of_measurement = "EUR"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "peak_rate"
 
     @property
@@ -392,6 +396,7 @@ class GoboonyBlockedPeriodsSensor(GoboonyBaseSensor):
     """Blocked periods info."""
 
     _attr_icon = "mdi:calendar-lock"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "blocked_periods"
 
     @property
@@ -462,3 +467,93 @@ class GoboonyReviewsSensor(GoboonyBaseSensor):
             "review_count": listing.get("review_count"),
             "times_hired": listing.get("times_hired"),
         }
+
+
+class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
+    """Hours until next check-in."""
+
+    _attr_icon = "mdi:timer-sand"
+    _attr_native_unit_of_measurement = "h"
+    _attr_translation_key = "check_in_countdown"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._listing_id}_check_in_countdown"
+
+    @staticmethod
+    def _parse_check_datetime(text: str) -> datetime | None:
+        """Parse datetime from check-in/out text like 'Mon 27 Apr – 2:00 PM'."""
+        import re as _re
+
+        if not text:
+            return None
+
+        months = {
+            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+        }
+
+        m = _re.search(
+            r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?\s*.*?(\d{1,2}):(\d{2})\s*(AM|PM)?",
+            text,
+            _re.IGNORECASE,
+        )
+        if m:
+            day = int(m.group(1))
+            month = months[m.group(2).lower()]
+            year = int(m.group(3)) if m.group(3) else datetime.now().year
+            hour = int(m.group(4))
+            minute = int(m.group(5))
+            if m.group(6):
+                ampm = m.group(6).upper()
+                if ampm == "PM" and hour != 12:
+                    hour += 12
+                elif ampm == "AM" and hour == 12:
+                    hour = 0
+            return datetime(year, month, day, hour, minute, tzinfo=timezone.utc)
+
+        # Fallback: date only
+        m = _re.search(
+            r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?",
+            text,
+            _re.IGNORECASE,
+        )
+        if m:
+            day = int(m.group(1))
+            month = months[m.group(2).lower()]
+            year = int(m.group(3)) if m.group(3) else datetime.now().year
+            return datetime(year, month, day, tzinfo=timezone.utc)
+
+        return None
+
+    @property
+    def native_value(self) -> int | None:
+        bookings = self._get_confirmed_bookings()
+        now = datetime.now(timezone.utc)
+
+        best_hours = None
+        for b in bookings:
+            dt = self._parse_check_datetime(b.get("check_in", ""))
+            if dt and dt > now:
+                hours = int((dt - now).total_seconds() / 3600)
+                if best_hours is None or hours < best_hours:
+                    best_hours = hours
+
+        return best_hours
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        bookings = self._get_confirmed_bookings()
+        now = datetime.now(timezone.utc)
+
+        for b in bookings:
+            dt = self._parse_check_datetime(b.get("check_in", ""))
+            if dt and dt > now:
+                delta = dt - now
+                return {
+                    "check_in": b.get("check_in", ""),
+                    "renter": b.get("renter", ""),
+                    "days": delta.days,
+                    "hours": int(delta.total_seconds() / 3600),
+                }
+        return {}

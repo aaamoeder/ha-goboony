@@ -399,6 +399,15 @@ class GoboonyApi:
             if match:
                 info["times_hired"] = int(match.group(1))
 
+        # First listing photo
+        og_image = soup.find("meta", property="og:image")
+        if og_image and og_image.get("content"):
+            info["photo_url"] = og_image["content"]
+        else:
+            img = soup.find("img", class_=re.compile(r"listing|camper|hero|gallery"))
+            if img and img.get("src"):
+                info["photo_url"] = img["src"]
+
         return info
 
     def get_all_data(self) -> dict:

@@ -15,11 +15,11 @@ from .coordinator import GoboonyCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.CALENDAR, Platform.IMAGE, Platform.SENSOR]
 
 CARD_JS_URL = f"/{DOMAIN}/goboony-bookings-card.js"
 CARD_JS_PATH = Path(__file__).parent / "goboony-bookings-card.js"
-CARD_VERSION = "1.4.0"
+CARD_VERSION = "1.5.0"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
