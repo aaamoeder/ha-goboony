@@ -1,6 +1,7 @@
 {
   "domain": "goboony",
   "name": "Goboony",
+  "integration_type": "service",
   "codeowners": ["@aaamoeder"],
   "config_flow": true,
   "documentation": "https://github.com/aaamoeder/ha-goboony",

@@ -7,6 +7,7 @@ import logging
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -58,13 +59,14 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
         self._entry = entry
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._listing_id)},
-            "name": f"Goboony {self._listing_id}",
-            "manufacturer": "Goboony",
-            "model": "Camper Listing",
-        }
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._listing_id)},
+            name=f"Goboony {self._listing_id}",
+            manufacturer="Goboony",
+            model="Camper Listing",
+        )
 
     def _get_bookings(self) -> list[dict]:
         if not self.coordinator.data:

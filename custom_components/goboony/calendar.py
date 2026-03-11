@@ -8,6 +8,7 @@ import re
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -123,13 +124,14 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
         self._attr_translation_key = "bookings_calendar"
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._listing_id)},
-            "name": f"Goboony {self._listing_id}",
-            "manufacturer": "Goboony",
-            "model": "Camper Listing",
-        }
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._listing_id)},
+            name=f"Goboony {self._listing_id}",
+            manufacturer="Goboony",
+            model="Camper Listing",
+        )
 
     def _build_events(self) -> list[CalendarEvent]:
         """Build calendar events from coordinator data."""

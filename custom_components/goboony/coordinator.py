@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import GoboonyApi, GoboonyApiError, GoboonyAuthError
@@ -14,8 +15,10 @@ from .const import CONF_EMAIL, CONF_LISTING_ID, CONF_PASSWORD, DEFAULT_SCAN_INTE
 _LOGGER = logging.getLogger(__name__)
 
 
-class GoboonyCoordinator(DataUpdateCoordinator):
+class GoboonyCoordinator(DataUpdateCoordinator[dict]):
     """Goboony data update coordinator."""
+
+    config_entry: ConfigEntry
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
@@ -24,6 +27,7 @@ class GoboonyCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            config_entry=entry,
         )
         self.api = GoboonyApi(
             email=entry.data[CONF_EMAIL],
@@ -36,9 +40,11 @@ class GoboonyCoordinator(DataUpdateCoordinator):
         try:
             return await self.hass.async_add_executor_job(self.api.get_all_data)
         except GoboonyAuthError as err:
-            # Clear session to force re-login next time
             self.api.session.cookies.clear()
-            raise UpdateFailed(f"Authentication failed: {err}") from err
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="invalid_auth",
+            ) from err
         except GoboonyApiError as err:
             raise UpdateFailed(f"API error: {err}") from err
         except Exception as err:
