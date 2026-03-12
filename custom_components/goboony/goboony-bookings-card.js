@@ -43,12 +43,22 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         },
       },
       {
+        name: "show_total_earnings",
+        default: true,
+        selector: { boolean: {} },
+      },
+      {
         name: "show_earnings",
         default: true,
         selector: { boolean: {} },
       },
       {
         name: "show_days",
+        default: true,
+        selector: { boolean: {} },
+      },
+      {
+        name: "show_last_updated",
         default: true,
         selector: { boolean: {} },
       },
@@ -66,8 +76,10 @@ class GoboonyBookingsCardEditor extends HTMLElement {
       review_entity: "Review entity",
       title: "Title",
       show_statuses: "Show statuses",
-      show_earnings: "Show earnings",
+      show_total_earnings: "Show total earnings in header",
+      show_earnings: "Show earnings per booking",
       show_days: "Show number of days",
+      show_last_updated: "Show last updated",
       compact_mode: "Compact mode",
     };
     return labels[schema.name] || schema.name;
@@ -90,8 +102,10 @@ class GoboonyBookingsCardEditor extends HTMLElement {
 
     const data = {
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_total_earnings: true,
       show_earnings: true,
       show_days: true,
+      show_last_updated: true,
       compact_mode: false,
       ...this._config,
     };
@@ -129,8 +143,10 @@ class GoboonyBookingsCard extends HTMLElement {
       entity: "sensor.goboony_total_bookings",
       title: "Goboony Bookings",
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_total_earnings: true,
       show_earnings: true,
       show_days: true,
+      show_last_updated: true,
       compact_mode: false,
     };
   }
@@ -404,59 +420,69 @@ class GoboonyBookingsCard extends HTMLElement {
 
     const lastUpdated = this._lastUpdated();
 
+    const showTotalEarnings = this._config.show_total_earnings !== false;
+    const showLastUpdated = this._config.show_last_updated !== false;
+    const cardTitle = this._esc(this._config.title) || "Goboony Bookings";
+
     this.innerHTML = `
       <ha-card>
         <div class="card-header-custom">
           <div class="header-left">
             <svg class="header-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/></svg>
-            <span>${this._esc(this._config.title) || "Goboony Bookings"}</span>
+            <span class="header-title">${cardTitle}</span>
             ${reviewHtml}
           </div>
-          <div class="header-stats">
-            <div class="earnings-block">
-              <span class="earnings-label">Total earnings</span>
+          ${showTotalEarnings ? `
+            <div class="header-earnings">
+              <span class="earnings-label">Total</span>
               <span class="earnings-value">\u20ac${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
-          </div>
+          ` : ""}
         </div>
         <div class="card-content-custom">
           ${activeRentalHtml}
           ${bookingRows}
         </div>
-        ${lastUpdated ? `<div class="card-footer">Updated ${lastUpdated}</div>` : ""}
+        ${showLastUpdated && lastUpdated ? `<div class="card-footer">Updated ${lastUpdated}</div>` : ""}
       </ha-card>
       <style>
-        ha-card { overflow: hidden; }
+        ha-card {
+          overflow: hidden;
+          font-size: var(--ha-card-body-font-size, 14px);
+        }
 
-        /* Header — Mushroom style */
+        /* Header */
         .card-header-custom {
           display: flex; justify-content: space-between; align-items: center;
-          padding: 16px 16px 8px; flex-wrap: wrap; gap: 8px;
+          padding: 16px 16px 12px; flex-wrap: wrap; gap: 8px;
         }
         .header-left {
           display: flex; align-items: center; gap: 8px;
-          font-size: 1em; font-weight: 500; color: var(--primary-text-color);
+          color: var(--primary-text-color);
+        }
+        .header-title {
+          font-size: var(--ha-card-header-font-size, 18px);
+          font-weight: 500;
+          line-height: 1.2;
         }
         .header-icon {
           width: 24px; height: 24px;
           color: var(--primary-color);
         }
         .header-rating {
-          font-size: 0.75em; font-weight: 600;
+          font-size: 0.85em; font-weight: 600;
           color: var(--warning-color, #FF9800);
           background: color-mix(in srgb, var(--warning-color, #FF9800) 12%, transparent);
           padding: 2px 8px; border-radius: 8px; white-space: nowrap;
         }
-        .header-stats { display: flex; align-items: center; }
-        .earnings-block {
-          display: flex; flex-direction: column; align-items: flex-end;
+        .header-earnings {
+          display: flex; align-items: center; gap: 8px;
         }
         .earnings-label {
-          font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em;
-          color: var(--secondary-text-color);
+          font-size: 0.85em; color: var(--secondary-text-color);
         }
         .earnings-value {
-          font-size: 1em; font-weight: 700;
+          font-size: 1.1em; font-weight: 700;
           color: var(--success-color, #4CAF50);
         }
 
@@ -472,14 +498,14 @@ class GoboonyBookingsCard extends HTMLElement {
         }
         .active-rental-label {
           display: flex; align-items: center; gap: 8px;
-          font-size: 0.75em; font-weight: 700; text-transform: uppercase;
+          font-size: 0.85em; font-weight: 700; text-transform: uppercase;
           letter-spacing: 0.06em; color: var(--primary-color);
           margin-bottom: 8px;
         }
         .active-rental-icon { width: 18px; height: 18px; color: var(--primary-color); }
         .active-rental-renter {
           display: flex; align-items: center; gap: 8px;
-          font-size: 1em; font-weight: 600; margin-bottom: 4px;
+          font-size: 1.1em; font-weight: 600; margin-bottom: 4px;
           color: var(--primary-text-color);
         }
         .active-rental-person-icon {
@@ -487,11 +513,11 @@ class GoboonyBookingsCard extends HTMLElement {
           color: var(--secondary-text-color);
         }
         .active-rental-dates {
-          font-size: 0.875em; color: var(--secondary-text-color);
+          font-size: 1em; color: var(--secondary-text-color);
           margin-bottom: 8px;
         }
         .active-rental-countdown {
-          font-size: 0.875em; font-weight: 600;
+          font-size: 1em; font-weight: 600;
           color: var(--primary-text-color); margin-bottom: 8px;
         }
         .active-rental-progress-track {
@@ -503,7 +529,7 @@ class GoboonyBookingsCard extends HTMLElement {
           border-radius: 4px; transition: width 0.4s ease;
         }
         .active-rental-progress-label {
-          font-size: 0.75em; color: var(--secondary-text-color);
+          font-size: 0.85em; color: var(--secondary-text-color);
           text-align: right;
         }
 
@@ -512,73 +538,71 @@ class GoboonyBookingsCard extends HTMLElement {
           display: block; text-decoration: none; color: inherit;
         }
         a.booking-link:hover .booking, a.booking-link:hover .booking-compact {
-          background: color-mix(in srgb, var(--primary-color) 4%, var(--card-background-color, #fff));
+          background: color-mix(in srgb, var(--primary-color) 5%, var(--card-background-color, #fff));
         }
         a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
 
         /* Normal booking row */
         .booking {
-          background: transparent;
-          border: none;
           border-left: 3px solid var(--divider-color, #e0e0e0);
-          border-radius: 0; padding: 8px 16px;
-          margin-bottom: 8px; transition: background 0.2s;
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
+          padding: 12px 16px;
+          transition: background 0.2s;
         }
+        .booking:last-child { border-bottom: none; }
         .booking-header {
           display: flex; justify-content: space-between; align-items: flex-start;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
-        .renter-block { display: flex; flex-direction: column; }
+        .renter-block { display: flex; flex-direction: column; gap: 2px; }
         .renter-name {
-          font-weight: 500; color: var(--primary-text-color); font-size: 0.875em;
+          font-weight: 500; color: var(--primary-text-color); font-size: 1em;
         }
         .booking-num {
-          font-size: 0.75em; color: var(--secondary-text-color);
+          font-size: 0.85em; color: var(--secondary-text-color);
         }
         .earnings {
-          font-size: 0.875em; font-weight: 600; color: var(--primary-text-color);
+          font-size: 1em; font-weight: 600; color: var(--primary-text-color);
         }
         .booking-body { display: flex; flex-direction: column; gap: 4px; }
         .dates, .days-row {
           display: flex; align-items: center; gap: 8px;
-          color: var(--secondary-text-color); font-size: 0.75em;
+          color: var(--secondary-text-color); font-size: 0.92em;
         }
         .icon {
-          width: 14px; height: 14px; flex-shrink: 0;
+          width: 16px; height: 16px; flex-shrink: 0;
           color: var(--secondary-text-color);
         }
         .date-range { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .date-arrow { color: var(--secondary-text-color); font-weight: 500; }
         .relative {
-          font-size: 0.75em; font-weight: 600;
+          font-size: 0.85em; font-weight: 600;
           color: var(--primary-color);
           background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-          padding: 1px 8px; border-radius: 8px; white-space: nowrap;
+          padding: 2px 8px; border-radius: 8px; white-space: nowrap;
         }
 
         /* Compact mode */
         .booking-compact {
-          display: flex; align-items: center; gap: 8px;
-          padding: 8px 16px; margin-bottom: 0;
+          display: flex; align-items: center; gap: 12px;
+          padding: 10px 16px;
           border-left: 3px solid var(--divider-color, #e0e0e0);
-          border-radius: 0;
-          background: transparent;
-          border-top: none; border-right: none; border-bottom: none;
-          font-size: 0.875em;
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
           transition: background 0.2s;
         }
+        .booking-compact:last-child { border-bottom: none; }
         .compact-renter {
           font-weight: 500; color: var(--primary-text-color);
-          min-width: 70px; flex-shrink: 0;
+          min-width: 80px; flex-shrink: 0;
         }
         .compact-dates {
           color: var(--secondary-text-color); flex: 1;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          font-size: 0.75em;
+          font-size: 0.92em;
         }
         .compact-days {
           color: var(--secondary-text-color); flex-shrink: 0;
-          font-size: 0.75em;
+          font-size: 0.92em;
         }
         .compact-earnings {
           font-weight: 600; color: var(--primary-text-color); flex-shrink: 0;
@@ -587,25 +611,25 @@ class GoboonyBookingsCard extends HTMLElement {
         /* Section dividers */
         .section-divider {
           height: 1px; background: var(--divider-color, #e0e0e0);
-          margin: 8px 0;
+          margin: 12px 0 4px;
         }
         .section-label {
-          font-size: 0.75em; font-weight: 500; text-transform: uppercase;
-          letter-spacing: 0.08em; color: var(--secondary-text-color);
-          padding: 0 0 8px;
+          font-size: 0.85em; font-weight: 500; text-transform: uppercase;
+          letter-spacing: 0.06em; color: var(--secondary-text-color);
+          padding: 4px 0 8px;
         }
 
         /* Footer */
         .card-footer {
-          padding: 8px 16px 16px; text-align: right;
-          font-size: 0.75em; color: var(--secondary-text-color);
-          opacity: 0.6;
+          padding: 8px 16px 12px; text-align: right;
+          font-size: 0.85em; color: var(--secondary-text-color);
+          opacity: 0.5;
         }
 
         /* Empty state */
         .empty {
           text-align: center; padding: 24px 16px;
-          color: var(--secondary-text-color); font-size: 0.875em;
+          color: var(--secondary-text-color);
         }
       </style>
     `;
