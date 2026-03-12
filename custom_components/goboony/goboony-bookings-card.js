@@ -19,11 +19,27 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         icon: "mdi:page-layout-header",
         schema: [
           { name: "title", selector: { text: {} } },
+          { name: "show_header_icon", default: true, selector: { boolean: {} } },
           { name: "show_total_earnings", default: true, selector: { boolean: {} } },
+          { name: "show_review", default: true, selector: { boolean: {} } },
         ],
         labels: {
           title: "Card title",
+          show_header_icon: "Show camper icon",
           show_total_earnings: "Show total earnings",
+          show_review: "Show review rating",
+        },
+      },
+      active_rental: {
+        label: "Active rental",
+        icon: "mdi:car-key",
+        schema: [
+          { name: "show_active_rental", default: true, selector: { boolean: {} } },
+          { name: "show_progress_bar", default: true, selector: { boolean: {} } },
+        ],
+        labels: {
+          show_active_rental: "Show active rental banner",
+          show_progress_bar: "Show progress bar",
         },
       },
       bookings: {
@@ -32,11 +48,21 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         schema: [
           { name: "show_earnings", default: true, selector: { boolean: {} } },
           { name: "show_days", default: true, selector: { boolean: {} } },
+          { name: "show_booking_number", default: true, selector: { boolean: {} } },
+          { name: "show_checkout_date", default: true, selector: { boolean: {} } },
+          { name: "show_relative_date", default: true, selector: { boolean: {} } },
+          { name: "show_gap_indicators", default: true, selector: { boolean: {} } },
+          { name: "max_bookings", default: 0, selector: { number: { min: 0, max: 50, step: 1, mode: "box" } } },
           { name: "compact_mode", default: false, selector: { boolean: {} } },
         ],
         labels: {
           show_earnings: "Show earnings per booking",
           show_days: "Show number of days",
+          show_booking_number: "Show booking number",
+          show_checkout_date: "Show check-out date",
+          show_relative_date: "Show relative date (e.g. 'in 3d')",
+          show_gap_indicators: "Show gap days between bookings",
+          max_bookings: "Max bookings to show (0 = all)",
           compact_mode: "Compact mode",
         },
       },
@@ -71,9 +97,11 @@ class GoboonyBookingsCardEditor extends HTMLElement {
         label: "Appearance",
         icon: "mdi:palette",
         schema: [
+          { name: "show_section_labels", default: true, selector: { boolean: {} } },
           { name: "show_last_updated", default: true, selector: { boolean: {} } },
         ],
         labels: {
+          show_section_labels: "Show section headers (Confirmed, Requests, ...)",
           show_last_updated: "Show last updated timestamp",
         },
       },
@@ -101,10 +129,20 @@ class GoboonyBookingsCardEditor extends HTMLElement {
   _getDefaults() {
     return {
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_header_icon: true,
       show_total_earnings: true,
+      show_review: true,
+      show_active_rental: true,
+      show_progress_bar: true,
       show_earnings: true,
       show_days: true,
+      show_booking_number: true,
+      show_checkout_date: true,
+      show_relative_date: true,
+      show_gap_indicators: true,
+      show_section_labels: true,
       show_last_updated: true,
+      max_bookings: 0,
       compact_mode: false,
     };
   }
@@ -213,10 +251,20 @@ class GoboonyBookingsCard extends HTMLElement {
       entity: "sensor.goboony_total_bookings",
       title: "Goboony Bookings",
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_header_icon: true,
       show_total_earnings: true,
+      show_review: true,
+      show_active_rental: true,
+      show_progress_bar: true,
       show_earnings: true,
       show_days: true,
+      show_booking_number: true,
+      show_checkout_date: true,
+      show_relative_date: true,
+      show_gap_indicators: true,
+      show_section_labels: true,
       show_last_updated: true,
+      max_bookings: 0,
       compact_mode: false,
     };
   }
@@ -374,7 +422,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     // Review entity data
     let reviewHtml = "";
-    if (this._config.review_entity) {
+    if (this._config.show_review !== false && this._config.review_entity) {
       const reviewState = this._hass.states[this._config.review_entity];
       if (reviewState) {
         const rating = reviewState.state;
@@ -389,10 +437,11 @@ class GoboonyBookingsCard extends HTMLElement {
     // Active rental detection
     const activeRental = this._findActiveRental(bookings);
     let activeRentalHtml = "";
-    if (activeRental) {
+    if (activeRental && this._config.show_active_rental !== false) {
       const ab = activeRental.booking;
       const dates = this._esc(ab.check_in || ab.dates || "\u2014");
       const datesTo = this._esc(ab.check_out || "");
+      const showProgress = this._config.show_progress_bar !== false;
       activeRentalHtml = `
         <div class="active-rental">
           <div class="active-rental-label">
@@ -407,10 +456,12 @@ class GoboonyBookingsCard extends HTMLElement {
             ${dates}${datesTo ? ` \u2192 ${datesTo}` : ""}
           </div>
           <div class="active-rental-countdown">${activeRental.remainingDays} day${activeRental.remainingDays !== 1 ? "s" : ""} remaining</div>
-          <div class="active-rental-progress-track">
-            <div class="active-rental-progress-bar" style="width:${activeRental.progress}%"></div>
-          </div>
-          <div class="active-rental-progress-label">${activeRental.progress}% complete</div>
+          ${showProgress ? `
+            <div class="active-rental-progress-track">
+              <div class="active-rental-progress-bar" style="width:${activeRental.progress}%"></div>
+            </div>
+            <div class="active-rental-progress-label">${activeRental.progress}% complete</div>
+          ` : ""}
         </div>
       `;
     }
@@ -444,9 +495,18 @@ class GoboonyBookingsCard extends HTMLElement {
       dates_changed_by_admin: "Modified",
     };
 
+    // Apply max_bookings limit
+    const maxBookings = parseInt(this._config.max_bookings) || 0;
+    const limited = maxBookings > 0 ? filtered.slice(0, maxBookings) : filtered;
+    const showSectionLabels = this._config.show_section_labels !== false;
+    const showGapIndicators = this._config.show_gap_indicators !== false;
+    const showRelativeDate = this._config.show_relative_date !== false;
+    const showCheckoutDate = this._config.show_checkout_date !== false;
+    const showBookingNumber = this._config.show_booking_number !== false;
+
     // Build booking rows
     let bookingRows = "";
-    if (filtered.length === 0) {
+    if (limited.length === 0) {
       bookingRows = `<div class="empty">No bookings found</div>`;
     } else {
       let lastSection = "";
@@ -455,19 +515,21 @@ class GoboonyBookingsCard extends HTMLElement {
       if (activeRental) {
         prevConfirmedEnd = this._extractEndDate(activeRental.booking);
       }
-      for (let fi = 0; fi < filtered.length; fi++) {
-        const b = filtered[fi];
+      for (let fi = 0; fi < limited.length; fi++) {
+        const b = limited[fi];
         const section = sectionLabels[b.status] || b.status;
         if (section !== lastSection) {
-          if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
-          bookingRows += `<div class="section-label">${this._esc(section)}</div>`;
+          if (showSectionLabels) {
+            if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
+            bookingRows += `<div class="section-label">${this._esc(section)}</div>`;
+          }
           lastSection = section;
           if (section !== "Confirmed" && section !== "Accepted") prevConfirmedEnd = null;
         }
 
         // Gap indicator between confirmed bookings
         const isConfirmed = b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted";
-        if (isConfirmed && prevConfirmedEnd) {
+        if (showGapIndicators && isConfirmed && prevConfirmedEnd) {
           const thisStart = this._extractStartDate(b);
           if (thisStart && prevConfirmedEnd) {
             const prevEnd = new Date(prevConfirmedEnd.getFullYear(), prevConfirmedEnd.getMonth(), prevConfirmedEnd.getDate());
@@ -491,7 +553,7 @@ class GoboonyBookingsCard extends HTMLElement {
         const safeUrl = this._escUrl(b.url);
         const hasUrl = safeUrl.length > 0;
         const startDate = this._extractStartDate(b);
-        const relative = this._relativeDate(startDate);
+        const relative = showRelativeDate ? this._relativeDate(startDate) : "";
         const renter = this._esc(b.renter) || "Unknown";
         const bookingNum = this._esc(b.booking_number || b.id || "");
 
@@ -513,7 +575,7 @@ class GoboonyBookingsCard extends HTMLElement {
                 <div class="booking-header">
                   <div class="renter-block">
                     <span class="renter-name">${renter}</span>
-                    ${bookingNum ? `<span class="booking-num">#${bookingNum}</span>` : ""}
+                    ${showBookingNumber && bookingNum ? `<span class="booking-num">#${bookingNum}</span>` : ""}
                   </div>
                   ${this._config.show_earnings !== false ? `<span class="earnings" ${b.earnings != null ? "" : 'style="opacity:0.35"'}>${earnings}</span>` : ""}
                 </div>
@@ -522,7 +584,7 @@ class GoboonyBookingsCard extends HTMLElement {
                     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,2 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
                     <div class="date-range">
                       <span>${dates}</span>
-                      ${datesTo ? `<span class="date-arrow">\u2192</span><span>${datesTo}</span>` : ""}
+                      ${showCheckoutDate && datesTo ? `<span class="date-arrow">\u2192</span><span>${datesTo}</span>` : ""}
                       ${relative ? `<span class="relative">${relative}</span>` : ""}
                     </div>
                   </div>
@@ -532,6 +594,9 @@ class GoboonyBookingsCard extends HTMLElement {
             </${hasUrl ? "a" : "div"}>
           `;
         }
+      }
+      if (maxBookings > 0 && filtered.length > maxBookings) {
+        bookingRows += `<div class="truncated">${filtered.length - maxBookings} more booking${filtered.length - maxBookings !== 1 ? "s" : ""}...</div>`;
       }
     }
 
@@ -545,7 +610,7 @@ class GoboonyBookingsCard extends HTMLElement {
       <ha-card>
         <div class="card-header-custom">
           <div class="header-left">
-            <svg class="header-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/></svg>
+            ${this._config.show_header_icon !== false ? `<svg class="header-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/></svg>` : ""}
             <span class="header-title">${cardTitle}</span>
             ${reviewHtml}
           </div>
@@ -759,10 +824,15 @@ class GoboonyBookingsCard extends HTMLElement {
           color: inherit; opacity: 0.6;
         }
 
-        /* Empty state */
+        /* Empty & truncated state */
         .empty {
           text-align: center; padding: 24px 16px;
           color: var(--secondary-text-color);
+        }
+        .truncated {
+          text-align: center; padding: 8px 16px;
+          font-size: 0.85em; color: var(--secondary-text-color);
+          font-style: italic;
         }
       </style>
     `;
