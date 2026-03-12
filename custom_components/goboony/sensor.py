@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GoboonyCoordinator
+from .date_utils import parse_check_datetime, parse_check_in_date
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -201,39 +202,6 @@ class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
     def unique_id(self) -> str:
         return f"{self._listing_id}_next_booking_days"
 
-    @staticmethod
-    def _parse_check_in_date(booking: dict) -> datetime | None:
-        """Parse the check-in date from booking data."""
-        import re as _re
-
-        # Try check_in field: "Mon 27 Apr – 2:00 PM" or "Mon 27 Apr 2026 – 2:00 PM"
-        check_in = booking.get("check_in", "")
-        if check_in:
-            m = _re.search(r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?", check_in, _re.IGNORECASE)
-            if m:
-                months = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
-                day = int(m.group(1))
-                month = months[m.group(2).lower()]
-                year = int(m.group(3)) if m.group(3) else datetime.now().year
-                return datetime(year, month, day, tzinfo=timezone.utc)
-
-        # Try dates field: "April 27\n – \nMay 1, 2026"
-        dates = booking.get("dates", "")
-        if dates:
-            # Normalize whitespace
-            dates_clean = " ".join(dates.split())
-            # Try "Month DD – Month DD, YYYY" pattern
-            m = _re.search(r"(\w+)\s+(\d{1,2}).*?(\w+)\s+(\d{1,2}),?\s*(\d{4})", dates_clean)
-            if m:
-                months = {"january":1,"february":2,"march":3,"april":4,"may":5,"june":6,"july":7,"august":8,"september":9,"october":10,"november":11,"december":12,
-                          "jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
-                start_month = months.get(m.group(1).lower())
-                if start_month:
-                    year = int(m.group(5))
-                    return datetime(year, start_month, int(m.group(2)), tzinfo=timezone.utc)
-
-        return None
-
     @property
     def native_value(self) -> int | None:
         bookings = self._get_confirmed_bookings()
@@ -242,7 +210,7 @@ class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
 
         best = None
         for b in bookings:
-            dt = self._parse_check_in_date(b)
+            dt = parse_check_in_date(b)
             if dt and dt >= today:
                 delta = (dt - today).days
                 if best is None or delta < best:
@@ -256,7 +224,7 @@ class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
 
     _attr_icon = "mdi:cash-multiple"
     _attr_native_unit_of_measurement = "EUR"
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = SensorStateClass.TOTAL
     _attr_translation_key = "total_earnings"
 
     @property
@@ -480,52 +448,6 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
     def unique_id(self) -> str:
         return f"{self._listing_id}_check_in_countdown"
 
-    @staticmethod
-    def _parse_check_datetime(text: str) -> datetime | None:
-        """Parse datetime from check-in/out text like 'Mon 27 Apr – 2:00 PM'."""
-        import re as _re
-
-        if not text:
-            return None
-
-        months = {
-            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
-        }
-
-        m = _re.search(
-            r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?\s*.*?(\d{1,2}):(\d{2})\s*(AM|PM)?",
-            text,
-            _re.IGNORECASE,
-        )
-        if m:
-            day = int(m.group(1))
-            month = months[m.group(2).lower()]
-            year = int(m.group(3)) if m.group(3) else datetime.now().year
-            hour = int(m.group(4))
-            minute = int(m.group(5))
-            if m.group(6):
-                ampm = m.group(6).upper()
-                if ampm == "PM" and hour != 12:
-                    hour += 12
-                elif ampm == "AM" and hour == 12:
-                    hour = 0
-            return datetime(year, month, day, hour, minute, tzinfo=timezone.utc)
-
-        # Fallback: date only
-        m = _re.search(
-            r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?",
-            text,
-            _re.IGNORECASE,
-        )
-        if m:
-            day = int(m.group(1))
-            month = months[m.group(2).lower()]
-            year = int(m.group(3)) if m.group(3) else datetime.now().year
-            return datetime(year, month, day, tzinfo=timezone.utc)
-
-        return None
-
     @property
     def native_value(self) -> int | None:
         bookings = self._get_confirmed_bookings()
@@ -533,7 +455,7 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
 
         best_hours = None
         for b in bookings:
-            dt = self._parse_check_datetime(b.get("check_in", ""))
+            dt = parse_check_datetime(b.get("check_in", ""))
             if dt and dt > now:
                 hours = int((dt - now).total_seconds() / 3600)
                 if best_hours is None or hours < best_hours:
@@ -547,7 +469,7 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
         now = datetime.now(timezone.utc)
 
         for b in bookings:
-            dt = self._parse_check_datetime(b.get("check_in", ""))
+            dt = parse_check_datetime(b.get("check_in", ""))
             if dt and dt > now:
                 delta = dt - now
                 return {

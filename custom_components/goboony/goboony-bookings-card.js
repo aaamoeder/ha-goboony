@@ -135,6 +135,22 @@ class GoboonyBookingsCard extends HTMLElement {
     };
   }
 
+  _esc(str) {
+    if (str == null) return "";
+    const d = document.createElement("div");
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
+  _escUrl(url) {
+    if (!url) return "";
+    try {
+      const u = new URL(url);
+      if (u.protocol === "https:" || u.protocol === "http:") return u.href;
+    } catch { /* invalid URL */ }
+    return "";
+  }
+
   _statusInfo(status) {
     const map = {
       confirmed: { label: "Confirmed", color: "#4CAF50" },
@@ -248,7 +264,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     const state = this._hass.states[this._entityId];
     if (!state) {
-      this.innerHTML = `<ha-card header="Goboony Bookings"><div class="card-content">Entity not found: ${this._entityId}</div></ha-card>`;
+      this.innerHTML = `<ha-card header="Goboony Bookings"><div class="card-content">Entity not found: ${this._esc(this._entityId)}</div></ha-card>`;
       return;
     }
 
@@ -265,8 +281,8 @@ class GoboonyBookingsCard extends HTMLElement {
         const rating = reviewState.state;
         const reviewCount = reviewState.attributes.review_count;
         if (rating && rating !== "unknown" && rating !== "unavailable") {
-          const countStr = reviewCount != null ? ` (${reviewCount})` : "";
-          reviewHtml = `<span class="header-rating">\u2605 ${rating}${countStr}</span>`;
+          const countStr = reviewCount != null ? ` (${this._esc(reviewCount)})` : "";
+          reviewHtml = `<span class="header-rating">\u2605 ${this._esc(rating)}${countStr}</span>`;
         }
       }
     }
@@ -276,8 +292,8 @@ class GoboonyBookingsCard extends HTMLElement {
     let activeRentalHtml = "";
     if (activeRental) {
       const ab = activeRental.booking;
-      const dates = ab.check_in ? `${ab.check_in}` : ab.dates || "\u2014";
-      const datesTo = ab.check_out || "";
+      const dates = this._esc(ab.check_in || ab.dates || "\u2014");
+      const datesTo = this._esc(ab.check_out || "");
       activeRentalHtml = `
         <div class="active-rental">
           <div class="active-rental-label">
@@ -286,7 +302,7 @@ class GoboonyBookingsCard extends HTMLElement {
           </div>
           <div class="active-rental-renter">
             <svg class="active-rental-person-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
-            ${ab.renter || "Unknown"}
+            ${this._esc(ab.renter) || "Unknown"}
           </div>
           <div class="active-rental-dates">
             ${dates}${datesTo ? ` \u2192 ${datesTo}` : ""}
@@ -331,24 +347,26 @@ class GoboonyBookingsCard extends HTMLElement {
         const section = sectionLabels[b.status] || b.status;
         if (section !== lastSection) {
           if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
-          bookingRows += `<div class="section-label">${section}</div>`;
+          bookingRows += `<div class="section-label">${this._esc(section)}</div>`;
           lastSection = section;
         }
         const si = this._statusInfo(b.status);
-        const dates = b.check_in ? `${b.check_in}` : b.dates || "\u2014";
-        const datesTo = b.check_out || "";
+        const dates = this._esc(b.check_in || b.dates || "\u2014");
+        const datesTo = this._esc(b.check_out || "");
         const earnings = b.earnings != null ? `\u20ac${b.earnings.toFixed(2)}` : "\u2014";
-        const days = b.num_days ? `${b.num_days}d` : "";
-        const hasUrl = b.url && b.url.length > 0;
+        const days = b.num_days ? `${parseInt(b.num_days)}d` : "";
+        const safeUrl = this._escUrl(b.url);
+        const hasUrl = safeUrl.length > 0;
         const startDate = this._extractStartDate(b);
         const relative = this._relativeDate(startDate);
-        const bookingNum = b.booking_number || b.id || "";
+        const renter = this._esc(b.renter) || "Unknown";
+        const bookingNum = this._esc(b.booking_number || b.id || "");
 
         if (compact) {
           bookingRows += `
-            <${hasUrl ? `a href="${b.url}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
+            <${hasUrl ? `a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
               <div class="booking-compact" style="border-left-color:${si.color}">
-                <span class="compact-renter">${b.renter || "Unknown"}</span>
+                <span class="compact-renter">${renter}</span>
                 <span class="compact-dates">${dates}${relative ? ` <span class="relative">${relative}</span>` : ""}</span>
                 ${days && this._config.show_days !== false ? `<span class="compact-days">${days}</span>` : ""}
                 ${this._config.show_earnings !== false ? `<span class="compact-earnings">${earnings}</span>` : ""}
@@ -357,11 +375,11 @@ class GoboonyBookingsCard extends HTMLElement {
           `;
         } else {
           bookingRows += `
-            <${hasUrl ? `a href="${b.url}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
+            <${hasUrl ? `a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
               <div class="booking" style="border-left-color:${si.color}">
                 <div class="booking-header">
                   <div class="renter-block">
-                    <span class="renter-name">${b.renter || "Unknown"}</span>
+                    <span class="renter-name">${renter}</span>
                     ${bookingNum ? `<span class="booking-num">#${bookingNum}</span>` : ""}
                   </div>
                   ${this._config.show_earnings !== false ? `<span class="earnings" ${b.earnings != null ? "" : 'style="opacity:0.35"'}>${earnings}</span>` : ""}
@@ -391,7 +409,7 @@ class GoboonyBookingsCard extends HTMLElement {
         <div class="card-header-custom">
           <div class="header-left">
             <svg class="header-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/></svg>
-            <span>${this._config.title || "Goboony Bookings"}</span>
+            <span>${this._esc(this._config.title) || "Goboony Bookings"}</span>
             ${reviewHtml}
           </div>
           <div class="header-stats">

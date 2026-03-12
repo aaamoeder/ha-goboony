@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GoboonyCoordinator
+from .date_utils import MONTH_MAP_SHORT
 
 _LOGGER = logging.getLogger(__name__)
 

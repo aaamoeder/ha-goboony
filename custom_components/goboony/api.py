@@ -33,6 +33,10 @@ class GoboonyApi:
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0",
         })
 
+    def close(self) -> None:
+        """Close the HTTP session."""
+        self.session.close()
+
     def login(self) -> None:
         """Authenticate with Goboony via Devise."""
         # Get CSRF token
@@ -83,9 +87,12 @@ class GoboonyApi:
         text = text.strip()
         # Remove currency symbols/text
         text = re.sub(r"[€EUR\s]", "", text)
-        # Handle comma as thousands separator or decimal
-        text = text.replace(",", "")
-        # If original had comma as decimal (European), handle it
+        # Detect European format: 1.234,56 (dot as thousands, comma as decimal)
+        if re.match(r"^\d{1,3}(\.\d{3})*(,\d+)?$", text):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            # English format: 1,234.56 (comma as thousands, dot as decimal)
+            text = text.replace(",", "")
         try:
             return float(text)
         except (ValueError, TypeError):
@@ -192,7 +199,7 @@ class GoboonyApi:
                         try:
                             detail["num_days"] = int(re.search(r"\d+", value).group())
                         except (AttributeError, ValueError):
-                            pass
+                            _LOGGER.debug("Failed to parse num_days from: %s", value)
                     elif "insurance" in label or "verzekering" in label:
                         detail["insurance_per_day"] = value
                     elif "mileage" in label or "kilometer" in label:
@@ -345,8 +352,6 @@ class GoboonyApi:
 
     def get_listing_info(self) -> dict:
         """Get public listing information."""
-        import json
-
         # First load /listings/ID to get the canonical (public) URL
         url = f"{BASE_URL}/listings/{self.listing_id}"
         soup = self._get_page(url)

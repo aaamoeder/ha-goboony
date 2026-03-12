@@ -1,8 +1,7 @@
 """Binary sensor platform for Goboony."""
 from __future__ import annotations
 
-import re
-from datetime import date, datetime, timezone
+from datetime import date
 import logging
 
 from homeassistant.components.binary_sensor import (
@@ -17,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GoboonyCoordinator
+from .date_utils import parse_date_from_check
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,27 +36,6 @@ async def async_setup_entry(
         GoboonyHasUpcomingBookingSensor(coordinator, entry, listing_id),
         GoboonyTurnaroundSensor(coordinator, entry, listing_id),
     ])
-
-
-def _parse_date_from_check(text: str) -> date | None:
-    """Parse a date from check-in/out text like 'Mon 27 Apr – 2:00 PM'."""
-    if not text:
-        return None
-    m = re.search(
-        r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?",
-        text,
-        re.IGNORECASE,
-    )
-    if m:
-        months = {
-            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
-        }
-        day = int(m.group(1))
-        month = months[m.group(2).lower()]
-        year = int(m.group(3)) if m.group(3) else datetime.now().year
-        return date(year, month, day)
-    return None
 
 
 class GoboonyBinaryBaseSensor(CoordinatorEntity, BinarySensorEntity):
@@ -110,8 +89,8 @@ class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
     def is_on(self) -> bool:
         today = date.today()
         for b in self._get_confirmed_bookings():
-            start = _parse_date_from_check(b.get("check_in", ""))
-            end = _parse_date_from_check(b.get("check_out", ""))
+            start = parse_date_from_check(b.get("check_in", ""))
+            end = parse_date_from_check(b.get("check_out", ""))
             if start and end and start <= today <= end:
                 return True
         return False
@@ -120,8 +99,8 @@ class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
     def extra_state_attributes(self) -> dict:
         today = date.today()
         for b in self._get_confirmed_bookings():
-            start = _parse_date_from_check(b.get("check_in", ""))
-            end = _parse_date_from_check(b.get("check_out", ""))
+            start = parse_date_from_check(b.get("check_in", ""))
+            end = parse_date_from_check(b.get("check_out", ""))
             if start and end and start <= today <= end:
                 return {
                     "renter": b.get("renter", ""),
@@ -179,7 +158,7 @@ class GoboonyHasUpcomingBookingSensor(GoboonyBinaryBaseSensor):
     def is_on(self) -> bool:
         today = date.today()
         for b in self._get_confirmed_bookings():
-            start = _parse_date_from_check(b.get("check_in", ""))
+            start = parse_date_from_check(b.get("check_in", ""))
             if start and start > today:
                 return True
         return False
@@ -203,8 +182,8 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
         # Collect all date ranges
         ranges = []
         for b in bookings:
-            start = _parse_date_from_check(b.get("check_in", ""))
-            end = _parse_date_from_check(b.get("check_out", ""))
+            start = parse_date_from_check(b.get("check_in", ""))
+            end = parse_date_from_check(b.get("check_out", ""))
             if start and end:
                 ranges.append((start, end))
 
@@ -225,8 +204,8 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
 
         ranges = []
         for b in bookings:
-            start = _parse_date_from_check(b.get("check_in", ""))
-            end = _parse_date_from_check(b.get("check_out", ""))
+            start = parse_date_from_check(b.get("check_in", ""))
+            end = parse_date_from_check(b.get("check_out", ""))
             if start and end:
                 ranges.append((start, end, b))
 
