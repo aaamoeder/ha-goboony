@@ -153,15 +153,15 @@ class GoboonyBookingsCard extends HTMLElement {
 
   _statusInfo(status) {
     const map = {
-      confirmed: { label: "Confirmed", color: "#4CAF50" },
-      accepted: { label: "Accepted", color: "#2196F3" },
-      request_accepted: { label: "Accepted", color: "#2196F3" },
-      request: { label: "Request", color: "#FF9800" },
-      inquiry: { label: "Inquiry", color: "#9C27B0" },
-      message: { label: "Message", color: "#607D8B" },
-      dates_changed_by_admin: { label: "Modified", color: "#9C27B0" },
+      confirmed: { label: "Confirmed", color: "var(--success-color, #4CAF50)" },
+      accepted: { label: "Accepted", color: "var(--info-color, #2196F3)" },
+      request_accepted: { label: "Accepted", color: "var(--info-color, #2196F3)" },
+      request: { label: "Request", color: "var(--warning-color, #FF9800)" },
+      inquiry: { label: "Inquiry", color: "var(--warning-color, #FF9800)" },
+      message: { label: "Message", color: "var(--secondary-text-color)" },
+      dates_changed_by_admin: { label: "Modified", color: "var(--secondary-text-color)" },
     };
-    return map[status] || { label: status, color: "#757575" };
+    return map[status] || { label: status, color: "var(--secondary-text-color)" };
   }
 
   _extractStartDate(booking) {
@@ -428,150 +428,184 @@ class GoboonyBookingsCard extends HTMLElement {
       <style>
         ha-card { overflow: hidden; }
 
-        /* Header */
+        /* Header — Mushroom style */
         .card-header-custom {
           display: flex; justify-content: space-between; align-items: center;
-          padding: 16px 16px 12px; flex-wrap: wrap; gap: 8px;
+          padding: 16px 16px 8px; flex-wrap: wrap; gap: 8px;
         }
         .header-left {
-          display: flex; align-items: center; gap: 10px;
-          font-size: 1.1em; font-weight: 500; color: var(--primary-text-color);
+          display: flex; align-items: center; gap: 8px;
+          font-size: 1em; font-weight: 500; color: var(--primary-text-color);
         }
-        .header-icon { width: 28px; height: 28px; color: #d92465; }
+        .header-icon {
+          width: 24px; height: 24px;
+          color: var(--primary-color);
+        }
         .header-rating {
-          font-size: 0.82em; font-weight: 600; color: #F9A825;
-          background: rgba(249,168,37,0.12); padding: 3px 10px;
-          border-radius: 12px; white-space: nowrap;
+          font-size: 0.75em; font-weight: 600;
+          color: var(--warning-color, #FF9800);
+          background: color-mix(in srgb, var(--warning-color, #FF9800) 12%, transparent);
+          padding: 2px 8px; border-radius: 8px; white-space: nowrap;
         }
         .header-stats { display: flex; align-items: center; }
         .earnings-block {
           display: flex; flex-direction: column; align-items: flex-end;
         }
         .earnings-label {
-          font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.05em;
-          color: var(--secondary-text-color); opacity: 0.7;
+          font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em;
+          color: var(--secondary-text-color);
         }
         .earnings-value {
-          font-size: 1.15em; font-weight: 700; color: #4CAF50;
+          font-size: 1em; font-weight: 700;
+          color: var(--success-color, #4CAF50);
         }
 
         /* Content */
-        .card-content-custom { padding: 4px 16px 8px; }
+        .card-content-custom { padding: 0 16px 8px; }
 
-        /* Active rental - Goboony gradient */
+        /* Active rental — subtle theme tint */
         .active-rental {
-          background: linear-gradient(135deg, #d92465, #a01d4f);
-          color: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px;
+          background: color-mix(in srgb, var(--primary-color) 8%, var(--card-background-color, #fff));
+          border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
+          border-radius: 12px; padding: 16px; margin-bottom: 16px;
+          color: var(--primary-text-color);
         }
         .active-rental-label {
           display: flex; align-items: center; gap: 8px;
-          font-size: 0.82em; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.06em; opacity: 0.9; margin-bottom: 8px;
+          font-size: 0.75em; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.06em; color: var(--primary-color);
+          margin-bottom: 8px;
         }
-        .active-rental-icon { width: 20px; height: 20px; color: #fff; }
+        .active-rental-icon { width: 18px; height: 18px; color: var(--primary-color); }
         .active-rental-renter {
           display: flex; align-items: center; gap: 8px;
-          font-size: 1.15em; font-weight: 600; margin-bottom: 4px;
+          font-size: 1em; font-weight: 600; margin-bottom: 4px;
+          color: var(--primary-text-color);
         }
-        .active-rental-person-icon { width: 22px; height: 22px; color: #fff; opacity: 0.85; }
-        .active-rental-dates { font-size: 0.9em; opacity: 0.85; margin-bottom: 10px; }
-        .active-rental-countdown { font-size: 1em; font-weight: 600; margin-bottom: 8px; }
+        .active-rental-person-icon {
+          width: 20px; height: 20px;
+          color: var(--secondary-text-color);
+        }
+        .active-rental-dates {
+          font-size: 0.875em; color: var(--secondary-text-color);
+          margin-bottom: 8px;
+        }
+        .active-rental-countdown {
+          font-size: 0.875em; font-weight: 600;
+          color: var(--primary-text-color); margin-bottom: 8px;
+        }
         .active-rental-progress-track {
-          background: rgba(255,255,255,0.25); border-radius: 6px;
-          height: 8px; overflow: hidden; margin-bottom: 4px;
+          background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+          border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 4px;
         }
         .active-rental-progress-bar {
-          background: #fff; height: 100%; border-radius: 6px; transition: width 0.4s ease;
+          background: var(--primary-color); height: 100%;
+          border-radius: 4px; transition: width 0.4s ease;
         }
-        .active-rental-progress-label { font-size: 0.78em; opacity: 0.75; text-align: right; }
+        .active-rental-progress-label {
+          font-size: 0.75em; color: var(--secondary-text-color);
+          text-align: right;
+        }
 
         /* Booking links */
-        a.booking-link, div.booking-link-none { display: block; text-decoration: none; color: inherit; }
+        a.booking-link, div.booking-link-none {
+          display: block; text-decoration: none; color: inherit;
+        }
         a.booking-link:hover .booking, a.booking-link:hover .booking-compact {
-          box-shadow: 0 2px 12px rgba(0,0,0,0.10); background: rgba(217,36,101,0.04);
+          background: color-mix(in srgb, var(--primary-color) 4%, var(--card-background-color, #fff));
         }
         a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
 
-        /* Normal booking card */
+        /* Normal booking row */
         .booking {
-          background: var(--card-background-color, #fff);
+          background: transparent;
           border: none;
-          border-left: 4px solid #757575;
-          border-radius: 0; padding: 12px 14px;
-          margin-bottom: 8px; transition: box-shadow 0.2s, border-color 0.2s;
+          border-left: 3px solid var(--divider-color, #e0e0e0);
+          border-radius: 0; padding: 8px 16px;
+          margin-bottom: 8px; transition: background 0.2s;
         }
         .booking-header {
-          display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin-bottom: 4px;
         }
-        .renter-block { display: flex; flex-direction: column; gap: 1px; }
+        .renter-block { display: flex; flex-direction: column; }
         .renter-name {
-          font-weight: 600; color: var(--primary-text-color); font-size: 0.98em;
+          font-weight: 500; color: var(--primary-text-color); font-size: 0.875em;
         }
         .booking-num {
-          font-size: 0.72em; color: var(--secondary-text-color); opacity: 0.6;
+          font-size: 0.75em; color: var(--secondary-text-color);
         }
-        .earnings { font-size: 1.1em; font-weight: 700; color: var(--primary-text-color); }
+        .earnings {
+          font-size: 0.875em; font-weight: 600; color: var(--primary-text-color);
+        }
         .booking-body { display: flex; flex-direction: column; gap: 4px; }
         .dates, .days-row {
           display: flex; align-items: center; gap: 8px;
-          color: var(--secondary-text-color); font-size: 0.88em;
+          color: var(--secondary-text-color); font-size: 0.75em;
         }
         .icon {
-          width: 16px; height: 16px; flex-shrink: 0;
-          color: var(--secondary-text-color); opacity: 0.6;
+          width: 14px; height: 14px; flex-shrink: 0;
+          color: var(--secondary-text-color);
         }
         .date-range { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .date-arrow { color: #d92465; font-weight: 600; }
+        .date-arrow { color: var(--secondary-text-color); font-weight: 500; }
         .relative {
-          font-size: 0.82em; font-weight: 600; color: #d92465;
-          background: rgba(217,36,101,0.08); padding: 1px 7px;
-          border-radius: 8px; white-space: nowrap;
+          font-size: 0.75em; font-weight: 600;
+          color: var(--primary-color);
+          background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+          padding: 1px 8px; border-radius: 8px; white-space: nowrap;
         }
 
         /* Compact mode */
         .booking-compact {
-          display: flex; align-items: center; gap: 12px;
-          padding: 8px 12px; margin-bottom: 4px;
-          border-left: 4px solid #757575;
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 16px; margin-bottom: 0;
+          border-left: 3px solid var(--divider-color, #e0e0e0);
           border-radius: 0;
-          background: var(--card-background-color, #fff);
-          border-top: none;
-          border-right: none;
-          border-bottom: none;
-          font-size: 0.88em;
-          transition: box-shadow 0.2s, border-color 0.2s;
+          background: transparent;
+          border-top: none; border-right: none; border-bottom: none;
+          font-size: 0.875em;
+          transition: background 0.2s;
         }
         .compact-renter {
-          font-weight: 600; color: var(--primary-text-color);
+          font-weight: 500; color: var(--primary-text-color);
           min-width: 70px; flex-shrink: 0;
         }
         .compact-dates {
           color: var(--secondary-text-color); flex: 1;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          font-size: 0.75em;
         }
-        .compact-days { color: var(--secondary-text-color); opacity: 0.7; flex-shrink: 0; }
-        .compact-earnings { font-weight: 700; color: var(--primary-text-color); flex-shrink: 0; }
+        .compact-days {
+          color: var(--secondary-text-color); flex-shrink: 0;
+          font-size: 0.75em;
+        }
+        .compact-earnings {
+          font-weight: 600; color: var(--primary-text-color); flex-shrink: 0;
+        }
 
         /* Section dividers */
         .section-divider {
-          height: 1px; background: var(--divider-color, #e0e0e0); margin: 14px 0 6px;
+          height: 1px; background: var(--divider-color, #e0e0e0);
+          margin: 8px 0;
         }
         .section-label {
-          font-size: 0.72em; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.1em; color: var(--secondary-text-color);
-          padding: 0 2px 6px; opacity: 0.7;
+          font-size: 0.75em; font-weight: 500; text-transform: uppercase;
+          letter-spacing: 0.08em; color: var(--secondary-text-color);
+          padding: 0 0 8px;
         }
 
         /* Footer */
         .card-footer {
-          padding: 6px 16px 12px; text-align: right;
-          font-size: 0.7em; color: var(--secondary-text-color); opacity: 0.5;
+          padding: 8px 16px 16px; text-align: right;
+          font-size: 0.75em; color: var(--secondary-text-color);
+          opacity: 0.6;
         }
 
         /* Empty state */
         .empty {
-          text-align: center; padding: 32px 16px;
-          color: var(--secondary-text-color); font-style: italic;
+          text-align: center; padding: 24px 16px;
+          color: var(--secondary-text-color); font-size: 0.875em;
         }
       </style>
     `;
