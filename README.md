@@ -35,7 +35,7 @@
 | **Manual refresh** | Button entity to trigger an immediate data update |
 | **Listing photo** | Image entity showing your listing's main photo |
 | **Calendar entity** | Native HA calendar with all bookings and blocked periods |
-| **Custom card** | Beautiful bookings card with multi-status filtering |
+| **Custom card** | Fully configurable bookings card with visual editor |
 | **Diagnostics** | Download debug data from the integration page |
 
 ## Installation
@@ -131,23 +131,70 @@ The integration includes a custom bookings card that is **automatically register
 
 ### Card features
 
-- Active rental highlight with progress bar and countdown
+- Active rental banner with progress bar and countdown
+- Gap indicators between bookings showing days between rentals
+- Changeover day detection (when check-out = next check-in)
 - Clickable bookings linking to Goboony detail page
+- Relative date badges ("in 3d", "tomorrow", etc.)
 - Review rating display in header
 - Multi-status filtering (confirmed, accepted, requests, inquiries, messages, modified)
-- Earnings per booking
-- Rental duration in days
+- Earnings per booking and total earnings in header
+- Compact mode for a denser layout
+- Fully themed using HA CSS variables — works with all themes (light, dark, custom)
+- Visual editor with collapsible sections (Mushroom card style)
 
 ### Card options
 
+The visual editor is organized in collapsible sections:
+
+#### Entity
+
 | Option | Description | Default |
 |--------|-------------|---------|
-| **Entity** | The Goboony total bookings sensor | — |
-| **Review entity** | The Goboony reviews sensor (optional) | — |
-| **Title** | Card header title | `Goboony Bookings` |
+| **Bookings entity** | The Goboony total bookings sensor | — |
+| **Reviews entity** | The Goboony reviews sensor (optional) | — |
+
+#### Header
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Card title** | Custom title text | `Goboony Bookings` |
+| **Show camper icon** | Show/hide the camper icon in the header | `true` |
+| **Show total earnings** | Show/hide total earnings in the header | `true` |
+| **Show review rating** | Show/hide the star rating badge | `true` |
+
+#### Active rental
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Show active rental banner** | Show/hide the active rental section | `true` |
+| **Show progress bar** | Show/hide the rental progress bar | `true` |
+
+#### Bookings
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Show earnings per booking** | Show/hide earnings on each booking | `true` |
+| **Show number of days** | Show/hide rental duration | `true` |
+| **Show booking number** | Show/hide the booking reference (#12345) | `true` |
+| **Show check-out date** | Show/hide the check-out date | `true` |
+| **Show relative date** | Show/hide relative date badges (e.g. "in 3d") | `true` |
+| **Show gap indicators** | Show/hide gap days and changeover indicators | `true` |
+| **Max bookings** | Limit the number of bookings shown (0 = all) | `0` |
+| **Compact mode** | Use a compact single-line layout | `false` |
+
+#### Filters
+
+| Option | Description | Default |
+|--------|-------------|---------|
 | **Show statuses** | Which booking statuses to display (multi-select) | All enabled |
-| **Show earnings** | Show earnings per booking | `true` |
-| **Show number of days** | Show rental duration | `true` |
+
+#### Appearance
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Show section headers** | Show/hide section labels (Confirmed, Requests, etc.) | `true` |
+| **Show last updated** | Show/hide the "Updated X min ago" footer | `true` |
 
 ### YAML example
 
@@ -160,8 +207,21 @@ show_statuses:
   - confirmed
   - accepted
   - request
+show_header_icon: true
+show_total_earnings: true
+show_review: true
+show_active_rental: true
+show_progress_bar: true
 show_earnings: true
 show_days: true
+show_booking_number: true
+show_checkout_date: true
+show_relative_date: true
+show_gap_indicators: true
+show_section_labels: true
+show_last_updated: true
+max_bookings: 0
+compact_mode: false
 ```
 
 ## Calendar
@@ -181,7 +241,8 @@ Go to **Settings** > **Devices & Services** > **Goboony** > **three dots** > **D
 Goboony does not provide a public API. Their mobile app uses server-rendered HTML via [Turbo Native](https://turbo.hotwired.dev/handbook/native). This integration scrapes the owner dashboard to retrieve your data.
 
 - **Polling interval**: configurable, default 60 minutes (range: 15–1440 minutes)
-- **Authentication**: standard email/password login
+- **Resilient fetching**: on failure, retries every 2 minutes while keeping previous data (up to 3 consecutive failures)
+- **Authentication**: lazy login — only authenticates when session cookies expire
 - **Data sources**: dashboard bookings, booking details, availability calendar, rates, public listing page
 
 ## Supported languages
