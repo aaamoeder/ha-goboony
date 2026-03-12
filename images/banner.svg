@@ -7,7 +7,7 @@
   </defs>
   <rect width="800" height="200" rx="16" fill="url(#bg)"/>
   <!-- Campervan icon -->
-  <g transform="translate(120,88)" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(100,88)" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="-56" y="-16" width="112" height="44" rx="6" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
     <path d="M-56,-16 L-56,-34 C-56,-40 -51,-45 -45,-45 L8,-45 L32,-16" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
     <rect x="-44" y="-39" width="22" height="17" rx="3" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
@@ -18,11 +18,17 @@
     <circle cx="38" cy="28" r="13" fill="#fff" stroke="#fff" stroke-width="2"/>
     <circle cx="38" cy="28" r="5.5" fill="url(#bg)" stroke="none"/>
   </g>
+  <!-- Euro coin badge on camper -->
+  <g transform="translate(165,58)">
+    <circle cx="0" cy="0" r="20" fill="#fff" stroke="none"/>
+    <circle cx="0" cy="0" r="17" fill="#FFD700" stroke="#DAA520" stroke-width="1.5"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" fill="#b01d53" text-anchor="middle">€</text>
+  </g>
   <!-- Text -->
   <text x="220" y="82" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="42" font-weight="700" fill="#fff" letter-spacing="0.5">Goboony</text>
   <text x="220" y="118" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.85)">for Home Assistant</text>
   <!-- Tagline -->
-  <text x="220" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="400" fill="rgba(255,255,255,0.6)">Track bookings, earnings, availability &amp; rates from your owner dashboard</text>
+  <text x="220" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="400" fill="rgba(255,255,255,0.6)">Camper &amp; motorhome rental dashboard — bookings, earnings &amp; availability</text>
   <!-- HA logo hint -->
   <g transform="translate(740,40)">
     <circle cx="0" cy="0" r="24" fill="rgba(255,255,255,0.15)"/>
