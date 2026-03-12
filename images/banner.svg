@@ -6,24 +6,49 @@
     </linearGradient>
   </defs>
   <rect width="800" height="200" rx="16" fill="url(#bg)"/>
-  <!-- Campervan icon -->
-  <g transform="translate(100,88)" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="-56" y="-16" width="112" height="44" rx="6" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
-    <path d="M-56,-16 L-56,-34 C-56,-40 -51,-45 -45,-45 L8,-45 L32,-16" fill="rgba(255,255,255,0.15)" stroke="#fff"/>
-    <rect x="-44" y="-39" width="22" height="17" rx="3" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
-    <rect x="-12" y="-39" width="16" height="17" rx="3" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
-    <rect x="38" y="-8" width="13" height="14" rx="2" fill="rgba(255,255,255,0.25)" stroke="#fff" stroke-width="3"/>
-    <circle cx="-32" cy="28" r="13" fill="#fff" stroke="#fff" stroke-width="2"/>
-    <circle cx="-32" cy="28" r="5.5" fill="url(#bg)" stroke="none"/>
-    <circle cx="38" cy="28" r="13" fill="#fff" stroke="#fff" stroke-width="2"/>
-    <circle cx="38" cy="28" r="5.5" fill="url(#bg)" stroke="none"/>
+
+  <!-- Motorhome side view - classic alcove style -->
+  <g transform="translate(105,98)">
+    <!-- Living area body (tall rear section) -->
+    <path d="M-58,-50 L-58,12 L58,12 L58,-18 L20,-18 L20,-50 Z" fill="rgba(255,255,255,0.18)" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+    <!-- Cab windshield (angled) -->
+    <path d="M38,-18 L58,-18 L58,0 L32,0 L32,-18 Z" fill="rgba(255,255,255,0.28)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Alcove overhang above cab -->
+    <path d="M20,-50 L58,-50 L58,-18 L20,-18 Z" fill="rgba(255,255,255,0.12)" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+    <!-- Living area window 1 -->
+    <rect x="-48" y="-20" width="22" height="16" rx="2" fill="rgba(255,255,255,0.3)" stroke="#fff" stroke-width="2"/>
+    <!-- Living area window 2 -->
+    <rect x="-20" y="-20" width="22" height="16" rx="2" fill="rgba(255,255,255,0.3)" stroke="#fff" stroke-width="2"/>
+    <!-- Cab side window -->
+    <rect x="24" y="-14" width="14" height="10" rx="2" fill="rgba(255,255,255,0.3)" stroke="#fff" stroke-width="2"/>
+    <!-- Entry door -->
+    <rect x="6" y="-16" width="10" height="26" rx="1.5" fill="rgba(255,255,255,0.15)" stroke="#fff" stroke-width="2"/>
+    <circle cx="14" cy="-2" r="1.5" fill="#fff" stroke="none"/>
+    <!-- Stripe / accent line -->
+    <line x1="-58" y1="2" x2="58" y2="2" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+    <!-- Headlight -->
+    <rect x="56" y="-6" width="4" height="7" rx="1.5" fill="#FFD700" stroke="none"/>
+    <!-- Rear light -->
+    <rect x="-60" y="-6" width="3" height="7" rx="1" fill="#FF6B6B" stroke="none"/>
+    <!-- Rear wheel -->
+    <circle cx="-32" cy="12" r="14" fill="#fff" stroke="none"/>
+    <circle cx="-32" cy="12" r="6" fill="url(#bg)" stroke="none"/>
+    <circle cx="-32" cy="12" r="2" fill="#fff" stroke="none"/>
+    <!-- Front wheel -->
+    <circle cx="42" cy="12" r="14" fill="#fff" stroke="none"/>
+    <circle cx="42" cy="12" r="6" fill="url(#bg)" stroke="none"/>
+    <circle cx="42" cy="12" r="2" fill="#fff" stroke="none"/>
+    <!-- Roof rack / AC unit -->
+    <rect x="-40" y="-55" width="30" height="5" rx="2" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
   </g>
-  <!-- Euro coin badge on camper -->
-  <g transform="translate(165,58)">
-    <circle cx="0" cy="0" r="20" fill="#fff" stroke="none"/>
-    <circle cx="0" cy="0" r="17" fill="#FFD700" stroke="#DAA520" stroke-width="1.5"/>
-    <text x="0" y="6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" fill="#b01d53" text-anchor="middle">€</text>
+
+  <!-- Euro coin badge -->
+  <g transform="translate(172,48)">
+    <circle cx="0" cy="0" r="19" fill="#fff" stroke="none"/>
+    <circle cx="0" cy="0" r="16" fill="#FFD700" stroke="#DAA520" stroke-width="1.5"/>
+    <text x="0" y="6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="700" fill="#b01d53" text-anchor="middle">€</text>
   </g>
+
   <!-- Text -->
   <text x="220" y="82" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="42" font-weight="700" fill="#fff" letter-spacing="0.5">Goboony</text>
   <text x="220" y="118" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.85)">for Home Assistant</text>
