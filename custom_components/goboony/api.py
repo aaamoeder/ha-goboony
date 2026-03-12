@@ -71,11 +71,22 @@ class GoboonyApi:
 
     def _get_page(self, url: str) -> BeautifulSoup:
         """Fetch a page and return parsed HTML."""
-        resp = self.session.get(url, timeout=30)
-        if resp.status_code == 401 or "sign_in" in resp.url:
-            # Re-authenticate
-            self.login()
+        try:
             resp = self.session.get(url, timeout=30)
+        except requests.ConnectionError as err:
+            raise GoboonyApiError(f"Connection error for {url}: {err}") from err
+        except requests.Timeout as err:
+            raise GoboonyApiError(f"Timeout loading {url}") from err
+
+        if resp.status_code == 401 or "sign_in" in resp.url:
+            # Re-authenticate and retry
+            _LOGGER.debug("Session expired, re-authenticating")
+            self.login()
+            try:
+                resp = self.session.get(url, timeout=30)
+            except (requests.ConnectionError, requests.Timeout) as err:
+                raise GoboonyApiError(f"Failed after re-auth for {url}: {err}") from err
+
         if resp.status_code != 200:
             raise GoboonyApiError(f"Failed to load {url}: {resp.status_code}")
         return BeautifulSoup(resp.text, "html.parser")
@@ -415,9 +426,14 @@ class GoboonyApi:
 
         return info
 
+    def _ensure_logged_in(self) -> None:
+        """Login only if we have no session cookies (first run or after clear)."""
+        if not self.session.cookies:
+            self.login()
+
     def get_all_data(self) -> dict:
         """Get all data for the listing."""
-        self.login()
+        self._ensure_logged_in()
 
         result = {
             "bookings": [],
@@ -430,6 +446,8 @@ class GoboonyApi:
         try:
             result["bookings"] = self.get_bookings()
             _LOGGER.debug("Found %d bookings", len(result["bookings"]))
+        except GoboonyAuthError:
+            raise
         except Exception as err:
             _LOGGER.warning("Failed to get bookings: %s", err)
 
@@ -438,24 +456,32 @@ class GoboonyApi:
             try:
                 detail = self.get_booking_detail(booking["booking_id"])
                 booking.update(detail)
+            except GoboonyAuthError:
+                raise
             except Exception as err:
                 _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
 
         # Get availability
         try:
             result["availability"] = self.get_availability()
+        except GoboonyAuthError:
+            raise
         except Exception as err:
             _LOGGER.warning("Failed to get availability: %s", err)
 
         # Get rates
         try:
             result["rates"] = self.get_rates()
+        except GoboonyAuthError:
+            raise
         except Exception as err:
             _LOGGER.warning("Failed to get rates: %s", err)
 
         # Get listing info
         try:
             result["listing"] = self.get_listing_info()
+        except GoboonyAuthError:
+            raise
         except Exception as err:
             _LOGGER.debug("Failed to get listing info: %s", err)
 

@@ -14,6 +14,8 @@ from .const import CONF_EMAIL, CONF_LISTING_ID, CONF_PASSWORD, CONF_SCAN_INTERVA
 
 _LOGGER = logging.getLogger(__name__)
 
+MAX_CONSECUTIVE_FAILURES = 3
+
 
 class GoboonyCoordinator(DataUpdateCoordinator[dict]):
     """Goboony data update coordinator."""
@@ -35,18 +37,33 @@ class GoboonyCoordinator(DataUpdateCoordinator[dict]):
             password=entry.data[CONF_PASSWORD],
             listing_id=entry.data[CONF_LISTING_ID],
         )
+        self._consecutive_failures = 0
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Goboony."""
         try:
-            return await self.hass.async_add_executor_job(self.api.get_all_data)
+            data = await self.hass.async_add_executor_job(self.api.get_all_data)
+            self._consecutive_failures = 0
+            return data
         except GoboonyAuthError as err:
             self.api.session.cookies.clear()
+            self._consecutive_failures = 0
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="invalid_auth",
             ) from err
-        except GoboonyApiError as err:
-            raise UpdateFailed(f"API error: {err}") from err
-        except Exception as err:
-            raise UpdateFailed(f"Unexpected error: {err}") from err
+        except (GoboonyApiError, Exception) as err:
+            self._consecutive_failures += 1
+            _LOGGER.warning(
+                "Goboony update failed (%d/%d): %s",
+                self._consecutive_failures,
+                MAX_CONSECUTIVE_FAILURES,
+                err,
+            )
+
+            # Keep previous data if we have it and haven't failed too many times
+            if self.data and self._consecutive_failures < MAX_CONSECUTIVE_FAILURES:
+                _LOGGER.debug("Keeping previous data after transient failure")
+                return self.data
+
+            raise UpdateFailed(f"API error after {self._consecutive_failures} attempts: {err}") from err
