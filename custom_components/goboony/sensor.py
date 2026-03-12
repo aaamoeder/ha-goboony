@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import logging
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -223,6 +223,7 @@ class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
     """Total earnings from confirmed bookings."""
 
     _attr_icon = "mdi:cash-multiple"
+    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
     _attr_state_class = SensorStateClass.TOTAL
     _attr_translation_key = "total_earnings"
@@ -257,6 +258,7 @@ class GoboonyBaseRateSensor(GoboonyBaseSensor):
     """Base (low season) rate."""
 
     _attr_icon = "mdi:currency-eur"
+    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "base_rate"
@@ -287,6 +289,7 @@ class GoboonyPeakRateSensor(GoboonyBaseSensor):
     """Peak season rate."""
 
     _attr_icon = "mdi:cash-plus"
+    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "peak_rate"

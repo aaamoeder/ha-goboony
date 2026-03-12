@@ -353,7 +353,7 @@ class GoboonyBookingsCard extends HTMLElement {
         const si = this._statusInfo(b.status);
         const dates = this._esc(b.check_in || b.dates || "\u2014");
         const datesTo = this._esc(b.check_out || "");
-        const earnings = b.earnings != null ? `\u20ac${b.earnings.toFixed(2)}` : "\u2014";
+        const earnings = b.earnings != null ? `\u20ac${b.earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : "\u2014";
         const days = b.num_days ? `${parseInt(b.num_days)}d` : "";
         const safeUrl = this._escUrl(b.url);
         const hasUrl = safeUrl.length > 0;
@@ -415,7 +415,7 @@ class GoboonyBookingsCard extends HTMLElement {
           <div class="header-stats">
             <div class="earnings-block">
               <span class="earnings-label">Total earnings</span>
-              <span class="earnings-value">\u20ac${totalEarnings.toFixed(2)}</span>
+              <span class="earnings-value">\u20ac${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           </div>
         </div>
