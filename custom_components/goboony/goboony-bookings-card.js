@@ -1,7 +1,90 @@
 class GoboonyBookingsCardEditor extends HTMLElement {
+  static get _sections() {
+    return {
+      entity: {
+        label: "Entity",
+        icon: "mdi:database",
+        expanded: true,
+        schema: [
+          { name: "entity", required: true, selector: { entity: { domain: "sensor" } } },
+          { name: "review_entity", selector: { entity: { domain: "sensor" } } },
+        ],
+        labels: {
+          entity: "Bookings entity",
+          review_entity: "Reviews entity (optional)",
+        },
+      },
+      header: {
+        label: "Header",
+        icon: "mdi:page-layout-header",
+        schema: [
+          { name: "title", selector: { text: {} } },
+          { name: "show_total_earnings", default: true, selector: { boolean: {} } },
+        ],
+        labels: {
+          title: "Card title",
+          show_total_earnings: "Show total earnings",
+        },
+      },
+      bookings: {
+        label: "Bookings",
+        icon: "mdi:book-multiple",
+        schema: [
+          { name: "show_earnings", default: true, selector: { boolean: {} } },
+          { name: "show_days", default: true, selector: { boolean: {} } },
+          { name: "compact_mode", default: false, selector: { boolean: {} } },
+        ],
+        labels: {
+          show_earnings: "Show earnings per booking",
+          show_days: "Show number of days",
+          compact_mode: "Compact mode",
+        },
+      },
+      filters: {
+        label: "Filters",
+        icon: "mdi:filter-variant",
+        schema: [
+          {
+            name: "show_statuses",
+            selector: {
+              select: {
+                multiple: true,
+                custom_value: false,
+                mode: "list",
+                options: [
+                  { value: "confirmed", label: "Confirmed" },
+                  { value: "accepted", label: "Accepted" },
+                  { value: "request", label: "Requests" },
+                  { value: "inquiry", label: "Inquiries" },
+                  { value: "message", label: "Messages" },
+                  { value: "modified", label: "Modified" },
+                ],
+              },
+            },
+          },
+        ],
+        labels: {
+          show_statuses: "Show statuses",
+        },
+      },
+      appearance: {
+        label: "Appearance",
+        icon: "mdi:palette",
+        schema: [
+          { name: "show_last_updated", default: true, selector: { boolean: {} } },
+        ],
+        labels: {
+          show_last_updated: "Show last updated timestamp",
+        },
+      },
+    };
+  }
+
   set hass(hass) {
     this._hass = hass;
-    if (this._form) this._form.hass = hass;
+    if (this._forms) {
+      for (const f of Object.values(this._forms)) f.hass = hass;
+    }
   }
 
   setConfig(config) {
@@ -9,110 +92,97 @@ class GoboonyBookingsCardEditor extends HTMLElement {
     this._render();
   }
 
-  get _schema() {
-    return [
-      {
-        name: "entity",
-        required: true,
-        selector: { entity: { domain: "sensor" } },
-      },
-      {
-        name: "review_entity",
-        selector: { entity: { domain: "sensor" } },
-      },
-      {
-        name: "title",
-        selector: { text: {} },
-      },
-      {
-        name: "show_statuses",
-        selector: {
-          select: {
-            multiple: true,
-            custom_value: false,
-            mode: "list",
-            options: [
-              { value: "confirmed", label: "Confirmed" },
-              { value: "accepted", label: "Accepted" },
-              { value: "request", label: "Requests" },
-              { value: "inquiry", label: "Inquiries" },
-              { value: "message", label: "Messages" },
-              { value: "modified", label: "Modified" },
-            ],
-          },
-        },
-      },
-      {
-        name: "show_total_earnings",
-        default: true,
-        selector: { boolean: {} },
-      },
-      {
-        name: "show_earnings",
-        default: true,
-        selector: { boolean: {} },
-      },
-      {
-        name: "show_days",
-        default: true,
-        selector: { boolean: {} },
-      },
-      {
-        name: "show_last_updated",
-        default: true,
-        selector: { boolean: {} },
-      },
-      {
-        name: "compact_mode",
-        default: false,
-        selector: { boolean: {} },
-      },
-    ];
+  _fireConfigChanged() {
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: { ...this._config } },
+    }));
   }
 
-  _computeLabel(schema) {
-    const labels = {
-      entity: "Entity",
-      review_entity: "Review entity",
-      title: "Title",
-      show_statuses: "Show statuses",
-      show_total_earnings: "Show total earnings in header",
-      show_earnings: "Show earnings per booking",
-      show_days: "Show number of days",
-      show_last_updated: "Show last updated",
-      compact_mode: "Compact mode",
-    };
-    return labels[schema.name] || schema.name;
-  }
-
-  _render() {
-    if (!this._form) {
-      this._form = document.createElement("ha-form");
-      this._form.computeLabel = (s) => this._computeLabel(s);
-      this._form.addEventListener("value-changed", (ev) => {
-        const newConfig = ev.detail.value;
-        this._config = newConfig;
-        const event = new CustomEvent("config-changed", {
-          detail: { config: newConfig },
-        });
-        this.dispatchEvent(event);
-      });
-      this.appendChild(this._form);
-    }
-
-    const data = {
+  _getDefaults() {
+    return {
       show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
       show_total_earnings: true,
       show_earnings: true,
       show_days: true,
       show_last_updated: true,
       compact_mode: false,
-      ...this._config,
     };
+  }
 
-    this._form.hass = this._hass;
-    this._form.data = data;
-    this._form.schema = this._schema;
+  _render() {
+    if (this._built) {
+      this._updateForms();
+      return;
+    }
+    this._built = true;
+    this._forms = {};
+
+    this.innerHTML = "";
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .editor-container { display: flex; flex-direction: column; gap: 8px; }
+      ha-expansion-panel { --expansion-panel-summary-padding: 0 16px; }
+      .panel-content { padding: 0 16px 16px; }
+      .panel-header { display: flex; align-items: center; gap: 8px; }
+      .panel-header ha-icon { color: var(--secondary-text-color); --mdc-icon-size: 20px; }
+      .panel-header span { font-size: 14px; font-weight: 500; }
+    `;
+    this.appendChild(style);
+
+    const container = document.createElement("div");
+    container.className = "editor-container";
+    this.appendChild(container);
+
+    const sections = GoboonyBookingsCardEditor._sections;
+    for (const [key, section] of Object.entries(sections)) {
+      const panel = document.createElement("ha-expansion-panel");
+      panel.outlined = true;
+      if (section.expanded) panel.expanded = true;
+
+      const header = document.createElement("div");
+      header.slot = "header";
+      header.className = "panel-header";
+      header.innerHTML = `<ha-icon icon="${section.icon}"></ha-icon><span>${section.label}</span>`;
+      panel.appendChild(header);
+
+      const content = document.createElement("div");
+      content.className = "panel-content";
+
+      const form = document.createElement("ha-form");
+      form.hass = this._hass;
+      form.computeLabel = (s) => section.labels[s.name] || s.name;
+      form.schema = section.schema;
+      form.addEventListener("value-changed", (ev) => {
+        const changed = ev.detail.value;
+        for (const [k, v] of Object.entries(changed)) {
+          this._config[k] = v;
+        }
+        this._fireConfigChanged();
+        this._updateForms();
+      });
+
+      this._forms[key] = form;
+      content.appendChild(form);
+      panel.appendChild(content);
+      container.appendChild(panel);
+    }
+
+    this._updateForms();
+  }
+
+  _updateForms() {
+    const data = { ...this._getDefaults(), ...this._config };
+    const sections = GoboonyBookingsCardEditor._sections;
+    for (const [key, section] of Object.entries(sections)) {
+      const form = this._forms[key];
+      if (!form) continue;
+      const sectionData = {};
+      for (const field of section.schema) {
+        sectionData[field.name] = data[field.name];
+      }
+      form.data = sectionData;
+    }
   }
 }
 
