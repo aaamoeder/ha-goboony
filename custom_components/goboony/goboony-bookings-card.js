@@ -203,6 +203,19 @@ class GoboonyBookingsCard extends HTMLElement {
     return null;
   }
 
+  _extractEndDate(booking) {
+    const co = booking.check_out;
+    if (co) {
+      const m = co.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
+      if (m) {
+        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+        const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
+        return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
+      }
+    }
+    return null;
+  }
+
   _relativeDate(startDate) {
     if (!startDate) return "";
     const today = new Date();
@@ -332,9 +345,17 @@ class GoboonyBookingsCard extends HTMLElement {
       `;
     }
 
-    // Filter bookings
+    // Filter bookings — exclude active rental from list
+    const activeBookingId = activeRental ? (activeRental.booking.booking_number || activeRental.booking.booking_id || activeRental.booking.id) : null;
     const showStatuses = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
-    const filtered = bookings.filter(b => this._statusEnabled(b.status, showStatuses));
+    const filtered = bookings.filter(b => {
+      if (!this._statusEnabled(b.status, showStatuses)) return false;
+      if (activeBookingId) {
+        const bid = b.booking_number || b.booking_id || b.id;
+        if (bid && bid === activeBookingId) return false;
+      }
+      return true;
+    });
 
     // Group by status, sort by date within
     const statusOrder = ["confirmed", "accepted", "request_accepted", "request", "inquiry", "message", "dates_changed_by_admin"];
@@ -359,12 +380,38 @@ class GoboonyBookingsCard extends HTMLElement {
       bookingRows = `<div class="empty">No bookings found</div>`;
     } else {
       let lastSection = "";
-      for (const b of filtered) {
+      let prevConfirmedEnd = null;
+      // If there's an active rental, use its end date as the starting point for gap calculation
+      if (activeRental) {
+        prevConfirmedEnd = this._extractEndDate(activeRental.booking);
+      }
+      for (let fi = 0; fi < filtered.length; fi++) {
+        const b = filtered[fi];
         const section = sectionLabels[b.status] || b.status;
         if (section !== lastSection) {
           if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
           bookingRows += `<div class="section-label">${this._esc(section)}</div>`;
           lastSection = section;
+          if (section !== "Confirmed" && section !== "Accepted") prevConfirmedEnd = null;
+        }
+
+        // Gap indicator between confirmed bookings
+        const isConfirmed = b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted";
+        if (isConfirmed && prevConfirmedEnd) {
+          const thisStart = this._extractStartDate(b);
+          if (thisStart && prevConfirmedEnd) {
+            const prevEnd = new Date(prevConfirmedEnd.getFullYear(), prevConfirmedEnd.getMonth(), prevConfirmedEnd.getDate());
+            const curStart = new Date(thisStart.getFullYear(), thisStart.getMonth(), thisStart.getDate());
+            const gapDays = Math.round((curStart - prevEnd) / 86400000);
+            if (gapDays === 0) {
+              bookingRows += `<div class="gap-indicator changeover"><svg viewBox="0 0 24 24" class="gap-icon"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg> Changeover day</div>`;
+            } else if (gapDays > 0) {
+              bookingRows += `<div class="gap-indicator"><svg viewBox="0 0 24 24" class="gap-icon"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg> ${gapDays} day${gapDays !== 1 ? "s" : ""} gap</div>`;
+            }
+          }
+        }
+        if (isConfirmed) {
+          prevConfirmedEnd = this._extractEndDate(b);
         }
         const si = this._statusInfo(b.status);
         const dates = this._esc(b.check_in || b.dates || "\u2014");
@@ -624,6 +671,22 @@ class GoboonyBookingsCard extends HTMLElement {
           padding: 8px 16px 12px; text-align: right;
           font-size: 0.85em; color: var(--secondary-text-color);
           opacity: 0.5;
+        }
+
+        /* Gap indicator */
+        .gap-indicator {
+          display: flex; align-items: center; justify-content: center;
+          gap: 6px; padding: 4px 16px;
+          font-size: 0.85em; color: var(--secondary-text-color);
+          border-left: 3px solid transparent;
+        }
+        .gap-indicator.changeover {
+          color: var(--warning-color, #FF9800);
+          font-weight: 500;
+        }
+        .gap-icon {
+          width: 14px; height: 14px;
+          color: inherit; opacity: 0.6;
         }
 
         /* Empty state */
