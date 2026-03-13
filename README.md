@@ -6,17 +6,12 @@
   <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom"></a>
   <a href="https://github.com/aaamoeder/ha-goboony/releases"><img src="https://img.shields.io/github/release/aaamoeder/ha-goboony.svg?style=for-the-badge" alt="GitHub Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://buymeacoffee.com/aaamoeder"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-☕-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=000000" alt="Buy me a coffee"></a>
 </p>
 
 <p align="center">
   A custom Home Assistant integration for <a href="https://www.goboony.com">Goboony</a> camper/motorhome rental owners.<br>
   Track your bookings, earnings, availability, rates and reviews directly in your smart home.
-</p>
-
-<p align="center">
-  <a href="https://buymeacoffee.com/aaamoeder">
-    <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=aaamoeder&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" />
-  </a>
 </p>
 
 ---
