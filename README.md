@@ -17,7 +17,7 @@
 ---
 
 <p align="center">
-  <em>If this project helped you, consider buying me a coffee</em> ☕
+  <em>If this project helped you, please consider buying me a coffee</em> ☕
 </p>
 
 <p align="center">
