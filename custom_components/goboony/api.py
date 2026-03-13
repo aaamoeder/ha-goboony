@@ -369,6 +369,10 @@ class GoboonyApi:
 
         info = {"listing_id": self.listing_id}
 
+        # Grab og:image early — the initial page often has it even if canonical doesn't
+        og_image = soup.find("meta", property="og:image")
+        initial_photo = og_image.get("content") if og_image else None
+
         # Check for canonical URL and re-fetch if different
         canonical = soup.find("link", rel="canonical")
         if canonical and canonical.get("href") and canonical["href"] != url:
@@ -415,12 +419,17 @@ class GoboonyApi:
             if match:
                 info["times_hired"] = int(match.group(1))
 
-        # First listing photo
+        # Listing photo: try og:image on canonical page, then initial page, then img tags
         og_image = soup.find("meta", property="og:image")
         if og_image and og_image.get("content"):
             info["photo_url"] = og_image["content"]
+        elif initial_photo:
+            info["photo_url"] = initial_photo
         else:
-            img = soup.find("img", class_=re.compile(r"listing|camper|hero|gallery"))
+            # Broader fallback: any Cloudinary image or listing-related img
+            img = soup.find("img", src=re.compile(r"cloudinary|res\.cloudinary\.com"))
+            if not img:
+                img = soup.find("img", class_=re.compile(r"listing|camper|hero|gallery"))
             if img and img.get("src"):
                 info["photo_url"] = img["src"]
 
