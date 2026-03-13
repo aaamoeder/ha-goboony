@@ -82,9 +82,9 @@
 
 After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Configure** to change:
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Update interval** | How often to fetch data from Goboony (minutes) | 60 |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `scan_interval` | number | `60` | v1.0.0 | How often to fetch data from Goboony (minutes, range: 15–1440) |
 
 ## Entities
 
@@ -155,52 +155,52 @@ The visual editor is organized in collapsible sections:
 
 #### Entity
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Bookings entity** | The Goboony total bookings sensor | — |
-| **Reviews entity** | The Goboony reviews sensor (optional) | — |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `entity` | string | **Required** | v1.0.0 | The Goboony total bookings sensor entity |
+| `review_entity` | string | — | v1.5.0 | The Goboony reviews sensor entity (optional) |
 
 #### Header
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Card title** | Custom title text | `Goboony Bookings` |
-| **Show camper icon** | Show/hide the camper icon in the header | `true` |
-| **Show total earnings** | Show/hide total earnings in the header | `true` |
-| **Show review rating** | Show/hide the star rating badge | `true` |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `title` | string | `Goboony Bookings` | v1.0.0 | Custom title text |
+| `show_header_icon` | boolean | `true` | v1.7.0 | Show/hide the camper icon in the header |
+| `show_total_earnings` | boolean | `true` | v1.7.0 | Show/hide total earnings in the header |
+| `show_review` | boolean | `true` | v1.7.0 | Show/hide the star rating badge |
 
 #### Active rental
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Show active rental banner** | Show/hide the active rental section | `true` |
-| **Show progress bar** | Show/hide the rental progress bar | `true` |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `show_active_rental` | boolean | `true` | v1.7.0 | Show/hide the active rental section |
+| `show_progress_bar` | boolean | `true` | v1.7.0 | Show/hide the rental progress bar |
 
 #### Bookings
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Show earnings per booking** | Show/hide earnings on each booking | `true` |
-| **Show number of days** | Show/hide rental duration | `true` |
-| **Show booking number** | Show/hide the booking reference (#12345) | `true` |
-| **Show check-out date** | Show/hide the check-out date | `true` |
-| **Show relative date** | Show/hide relative date badges (e.g. "in 3d") | `true` |
-| **Show gap indicators** | Show/hide gap days and changeover indicators | `true` |
-| **Max bookings** | Limit the number of bookings shown (0 = all) | `0` |
-| **Compact mode** | Use a compact single-line layout | `false` |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `show_earnings` | boolean | `true` | v1.7.0 | Show/hide earnings on each booking |
+| `show_days` | boolean | `true` | v1.7.0 | Show/hide rental duration |
+| `show_booking_number` | boolean | `true` | v1.7.0 | Show/hide the booking reference (#12345) |
+| `show_checkout_date` | boolean | `true` | v1.7.0 | Show/hide the check-out date |
+| `show_relative_date` | boolean | `true` | v1.7.0 | Show/hide relative date badges (e.g. "in 3d") |
+| `show_gap_indicators` | boolean | `true` | v1.7.0 | Show/hide gap days and changeover indicators |
+| `max_bookings` | number | `0` | v1.7.0 | Limit the number of bookings shown (0 = all) |
+| `compact_mode` | boolean | `false` | v1.7.0 | Use a compact single-line layout |
 
 #### Filters
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Show statuses** | Which booking statuses to display (multi-select) | All enabled |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `show_statuses` | list | all | v1.6.0 | Which booking statuses to display (confirmed, accepted, request, inquiry, message, modified) |
 
 #### Appearance
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| **Show section headers** | Show/hide section labels (Confirmed, Requests, etc.) | `true` |
-| **Show last updated** | Show/hide the "Updated X min ago" footer | `true` |
+| Name | Type | Default | Since | Description |
+|------|------|---------|-------|-------------|
+| `show_section_labels` | boolean | `true` | v1.7.0 | Show/hide section labels (Confirmed, Requests, etc.) |
+| `show_last_updated` | boolean | `true` | v1.7.0 | Show/hide the "Updated X min ago" footer |
 
 ### YAML example
 
