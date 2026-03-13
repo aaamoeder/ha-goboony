@@ -9,8 +9,15 @@
 </p>
 
 <p align="center">
-  A custom Home Assistant integration for <a href="https://www.goboony.com">Goboony</a> camper/motorhome rental owners.<br>
+  An all-in-one Home Assistant package for <a href="https://www.goboony.com">Goboony</a> camper/motorhome rental owners.<br>
+  Includes a <strong>custom integration</strong> (sensors, calendar, binary sensors, diagnostics) and a <strong>custom Lovelace card</strong> with visual editor.<br>
   Track your bookings, earnings, availability, rates and reviews directly in your smart home.
+</p>
+
+---
+
+<p align="center">
+  <em>If this project helped you, consider buying me a coffee</em> ☕
 </p>
 
 <p align="center">
