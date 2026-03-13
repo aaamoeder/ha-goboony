@@ -13,6 +13,12 @@
   Track your bookings, earnings, availability, rates and reviews directly in your smart home.
 </p>
 
+<p align="center">
+  <a href="https://buymeacoffee.com/aaamoeder">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=aaamoeder&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" />
+  </a>
+</p>
+
 ---
 
 ## Features
