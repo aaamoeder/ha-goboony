@@ -431,35 +431,40 @@ class GoboonyApi:
         if not self.session.cookies:
             self.login()
 
-    def get_all_data(self) -> dict:
-        """Get all data for the listing."""
+    def get_all_data(self, previous_data: dict | None = None) -> dict:
+        """Get all data for the listing.
+
+        If previous_data is provided, failed sections will retain
+        previous values instead of returning empty data.
+        """
         self._ensure_logged_in()
 
+        prev = previous_data or {}
         result = {
-            "bookings": [],
-            "availability": {},
-            "rates": {},
-            "listing": {},
+            "bookings": prev.get("bookings", []),
+            "availability": prev.get("availability", {}),
+            "rates": prev.get("rates", {}),
+            "listing": prev.get("listing", {}),
         }
 
         # Get bookings list
         try:
-            result["bookings"] = self.get_bookings()
-            _LOGGER.debug("Found %d bookings", len(result["bookings"]))
+            bookings = self.get_bookings()
+            _LOGGER.debug("Found %d bookings", len(bookings))
+            # Get booking details for all bookings
+            for booking in bookings:
+                try:
+                    detail = self.get_booking_detail(booking["booking_id"])
+                    booking.update(detail)
+                except GoboonyAuthError:
+                    raise
+                except Exception as err:
+                    _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
+            result["bookings"] = bookings
         except GoboonyAuthError:
             raise
         except Exception as err:
-            _LOGGER.warning("Failed to get bookings: %s", err)
-
-        # Get booking details for all bookings
-        for booking in result["bookings"]:
-            try:
-                detail = self.get_booking_detail(booking["booking_id"])
-                booking.update(detail)
-            except GoboonyAuthError:
-                raise
-            except Exception as err:
-                _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
+            _LOGGER.warning("Failed to get bookings: %s — keeping previous data", err)
 
         # Get availability
         try:
@@ -467,7 +472,7 @@ class GoboonyApi:
         except GoboonyAuthError:
             raise
         except Exception as err:
-            _LOGGER.warning("Failed to get availability: %s", err)
+            _LOGGER.warning("Failed to get availability: %s — keeping previous data", err)
 
         # Get rates
         try:
@@ -475,7 +480,7 @@ class GoboonyApi:
         except GoboonyAuthError:
             raise
         except Exception as err:
-            _LOGGER.warning("Failed to get rates: %s", err)
+            _LOGGER.warning("Failed to get rates: %s — keeping previous data", err)
 
         # Get listing info
         try:
@@ -483,6 +488,6 @@ class GoboonyApi:
         except GoboonyAuthError:
             raise
         except Exception as err:
-            _LOGGER.debug("Failed to get listing info: %s", err)
+            _LOGGER.debug("Failed to get listing info: %s — keeping previous data", err)
 
         return result

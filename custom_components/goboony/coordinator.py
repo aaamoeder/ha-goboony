@@ -45,7 +45,9 @@ class GoboonyCoordinator(DataUpdateCoordinator[dict]):
     async def _async_update_data(self) -> dict:
         """Fetch data from Goboony."""
         try:
-            data = await self.hass.async_add_executor_job(self.api.get_all_data)
+            data = await self.hass.async_add_executor_job(
+                self.api.get_all_data, self.data
+            )
             self._consecutive_failures = 0
             # Restore normal interval after successful fetch
             if self.update_interval != self._normal_interval:
