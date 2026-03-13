@@ -160,7 +160,7 @@ The integration includes a custom bookings card that is **automatically register
 - Earnings per booking and total earnings in header
 - Compact mode for a denser layout
 - Fully themed using HA CSS variables — works with all themes (light, dark, custom)
-- Visual editor with collapsible sections (Mushroom card style)
+- Visual editor
 
 ### Card options
 
