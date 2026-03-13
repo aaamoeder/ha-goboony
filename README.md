@@ -135,6 +135,12 @@ After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Confi
 
 The integration includes a custom bookings card that is **automatically registered** — no manual resource setup needed.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/card-light.png" alt="Bookings card — light mode" width="400">
+  &nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/card-dark.png" alt="Bookings card — dark mode" width="400">
+</p>
+
 ### Adding the card
 
 1. Edit your dashboard
