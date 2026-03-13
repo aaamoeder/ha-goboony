@@ -70,11 +70,11 @@
 2. Search for **Goboony**
 3. Enter your credentials:
 
-| Field | Description |
-|-------|-------------|
-| **Email** | Your Goboony owner account email |
-| **Password** | Your Goboony password |
-| **Listing ID** | Found in the URL of your listing page (e.g. `goboony.com/listings/12345`) |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `email` | string | yes | Your Goboony owner account email |
+| `password` | string | yes | Your Goboony password |
+| `listing_id` | string | yes | Found in the URL of your listing page (e.g. `goboony.com/listings/12345`) |
 
 > The integration supports **re-authentication** — if your session expires, Home Assistant will prompt you to re-enter your credentials.
 
@@ -82,9 +82,9 @@
 
 After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Configure** to change:
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `scan_interval` | number | `60` | v1.0.0 | How often to fetch data from Goboony (minutes, range: 15–1440) |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `scan_interval` | number | no | `60` | v1.0.0 | How often to fetch data from Goboony (minutes, range: 15–1440) |
 
 ## Entities
 
@@ -155,52 +155,52 @@ The visual editor is organized in collapsible sections:
 
 #### Entity
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `entity` | string | **Required** | v1.0.0 | The Goboony total bookings sensor entity |
-| `review_entity` | string | — | v1.5.0 | The Goboony reviews sensor entity (optional) |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `entity` | string | yes | — | v1.0.0 | The Goboony total bookings sensor entity |
+| `review_entity` | string | no | — | v1.5.0 | The Goboony reviews sensor entity |
 
 #### Header
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `title` | string | `Goboony Bookings` | v1.0.0 | Custom title text |
-| `show_header_icon` | boolean | `true` | v1.7.0 | Show/hide the camper icon in the header |
-| `show_total_earnings` | boolean | `true` | v1.7.0 | Show/hide total earnings in the header |
-| `show_review` | boolean | `true` | v1.7.0 | Show/hide the star rating badge |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `title` | string | no | `Goboony Bookings` | v1.0.0 | Custom title text |
+| `show_header_icon` | boolean | no | `true` | v1.7.0 | Show/hide the camper icon in the header |
+| `show_total_earnings` | boolean | no | `true` | v1.7.0 | Show/hide total earnings in the header |
+| `show_review` | boolean | no | `true` | v1.7.0 | Show/hide the star rating badge |
 
 #### Active rental
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `show_active_rental` | boolean | `true` | v1.7.0 | Show/hide the active rental section |
-| `show_progress_bar` | boolean | `true` | v1.7.0 | Show/hide the rental progress bar |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `show_active_rental` | boolean | no | `true` | v1.7.0 | Show/hide the active rental section |
+| `show_progress_bar` | boolean | no | `true` | v1.7.0 | Show/hide the rental progress bar |
 
 #### Bookings
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `show_earnings` | boolean | `true` | v1.7.0 | Show/hide earnings on each booking |
-| `show_days` | boolean | `true` | v1.7.0 | Show/hide rental duration |
-| `show_booking_number` | boolean | `true` | v1.7.0 | Show/hide the booking reference (#12345) |
-| `show_checkout_date` | boolean | `true` | v1.7.0 | Show/hide the check-out date |
-| `show_relative_date` | boolean | `true` | v1.7.0 | Show/hide relative date badges (e.g. "in 3d") |
-| `show_gap_indicators` | boolean | `true` | v1.7.0 | Show/hide gap days and changeover indicators |
-| `max_bookings` | number | `0` | v1.7.0 | Limit the number of bookings shown (0 = all) |
-| `compact_mode` | boolean | `false` | v1.7.0 | Use a compact single-line layout |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `show_earnings` | boolean | no | `true` | v1.7.0 | Show/hide earnings on each booking |
+| `show_days` | boolean | no | `true` | v1.7.0 | Show/hide rental duration |
+| `show_booking_number` | boolean | no | `true` | v1.7.0 | Show/hide the booking reference (#12345) |
+| `show_checkout_date` | boolean | no | `true` | v1.7.0 | Show/hide the check-out date |
+| `show_relative_date` | boolean | no | `true` | v1.7.0 | Show/hide relative date badges (e.g. "in 3d") |
+| `show_gap_indicators` | boolean | no | `true` | v1.7.0 | Show/hide gap days and changeover indicators |
+| `max_bookings` | number | no | `0` | v1.7.0 | Limit the number of bookings shown (0 = all) |
+| `compact_mode` | boolean | no | `false` | v1.7.0 | Use a compact single-line layout |
 
 #### Filters
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `show_statuses` | list | all | v1.6.0 | Which booking statuses to display (confirmed, accepted, request, inquiry, message, modified) |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `show_statuses` | list | no | all | v1.6.0 | Which booking statuses to display (confirmed, accepted, request, inquiry, message, modified) |
 
 #### Appearance
 
-| Name | Type | Default | Since | Description |
-|------|------|---------|-------|-------------|
-| `show_section_labels` | boolean | `true` | v1.7.0 | Show/hide section labels (Confirmed, Requests, etc.) |
-| `show_last_updated` | boolean | `true` | v1.7.0 | Show/hide the "Updated X min ago" footer |
+| Name | Type | Required | Default | Since | Description |
+|------|------|----------|---------|-------|-------------|
+| `show_section_labels` | boolean | no | `true` | v1.7.0 | Show/hide section labels (Confirmed, Requests, etc.) |
+| `show_last_updated` | boolean | no | `true` | v1.7.0 | Show/hide the "Updated X min ago" footer |
 
 ### YAML example
 
