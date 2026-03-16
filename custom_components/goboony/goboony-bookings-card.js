@@ -281,7 +281,7 @@ class GoboonyBookingsCard extends HTMLElement {
     try {
       const u = new URL(url);
       if (u.protocol === "https:" || u.protocol === "http:") return u.href;
-    } catch { /* invalid URL */ }
+    } catch (e) { /* invalid URL */ }
     return "";
   }
 
