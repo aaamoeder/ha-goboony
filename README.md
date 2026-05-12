@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge" alt="HACS Default"></a>
   <a href="https://github.com/aaamoeder/ha-goboony/releases"><img src="https://img.shields.io/github/release/aaamoeder/ha-goboony.svg?style=for-the-badge" alt="GitHub Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT"></a>
 </p>
@@ -55,15 +55,14 @@
 
 ### HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aaamoeder&repository=ha-goboony&category=integration)
+
 1. Open **HACS** in your Home Assistant instance
-2. Click the **three dots** menu (top right) and select **Custom repositories**
-3. Add this repository URL:
-   ```
-   https://github.com/aaamoeder/ha-goboony
-   ```
-4. Set the category to **Integration** and click **Add**
-5. Find **Goboony** in the HACS store and click **Install**
-6. **Restart** Home Assistant
+2. Search for **Goboony** in the HACS store
+3. Click **Download**
+4. **Restart** Home Assistant
+
+> Available in the default HACS store since v1.7.5.
 
 ### Manual installation
 
