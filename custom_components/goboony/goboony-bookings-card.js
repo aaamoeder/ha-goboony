@@ -246,14 +246,6 @@ class GoboonyBookingsCard extends HTMLElement {
     return 4;
   }
 
-  getLayoutOptions() {
-    return {
-      grid_columns: "full",
-      grid_min_columns: 2,
-      grid_rows: "auto",
-    };
-  }
-
   static getStubConfig() {
     return {
       entity: "sensor.goboony_total_bookings",
@@ -636,9 +628,6 @@ class GoboonyBookingsCard extends HTMLElement {
         ${showLastUpdated && lastUpdated ? `<div class="card-footer">Updated ${lastUpdated}</div>` : ""}
       </ha-card>
       <style>
-        :host {
-          --goboony-card-padding: 16px;
-        }
         ha-card {
           overflow: hidden;
           font-size: var(--ha-card-body-font-size, 14px);
@@ -649,7 +638,7 @@ class GoboonyBookingsCard extends HTMLElement {
         /* Header */
         .card-header-custom {
           display: flex; justify-content: space-between; align-items: center;
-          padding: var(--goboony-card-padding) var(--goboony-card-padding) 12px;
+          padding: 16px 16px 12px;
           flex-wrap: wrap; gap: 8px;
         }
         .header-left {
@@ -685,7 +674,7 @@ class GoboonyBookingsCard extends HTMLElement {
         }
 
         /* Content */
-        .card-content-custom { padding: 0 var(--goboony-card-padding) 8px; }
+        .card-content-custom { padding: 0 16px 8px; }
 
         /* Active rental — subtle theme tint */
         .active-rental {
@@ -744,7 +733,7 @@ class GoboonyBookingsCard extends HTMLElement {
         .booking {
           border-left: 3px solid var(--divider-color, #e0e0e0);
           border-bottom: 1px solid var(--divider-color, #e0e0e0);
-          padding: 12px var(--goboony-card-padding);
+          padding: 12px 16px;
           transition: background 0.2s;
           min-width: 0;
         }
@@ -848,27 +837,29 @@ class GoboonyBookingsCard extends HTMLElement {
           color: var(--secondary-text-color);
         }
         .truncated {
-          text-align: center; padding: 8px var(--goboony-card-padding);
+          text-align: center; padding: 8px 16px;
           font-size: 0.85em; color: var(--secondary-text-color);
           font-style: italic;
         }
 
         /* Responsive: narrow cards / mobile */
         @media (max-width: 450px) {
-          :host { --goboony-card-padding: 12px; }
+          .card-header-custom { padding: 12px 12px 10px; }
+          .card-content-custom { padding: 0 12px 8px; }
           .header-title { font-size: 16px; }
           .earnings-value { font-size: 1em; }
           .booking { padding: 10px 12px; }
           .booking-compact { padding: 8px 12px; gap: 8px; }
           .active-rental { padding: 12px; border-radius: 10px; }
           .compact-renter { min-width: 60px; }
+          .card-footer { padding: 6px 12px 10px; }
         }
 
         @media (max-width: 320px) {
-          :host { --goboony-card-padding: 8px; }
+          .card-header-custom { padding: 8px 8px 6px; gap: 4px; }
+          .card-content-custom { padding: 0 8px 6px; }
           .header-title { font-size: 14px; }
           .header-icon { width: 20px; height: 20px; }
-          .card-header-custom { gap: 4px; }
           .header-left { gap: 4px; }
           .booking { padding: 8px; }
           .booking-compact { padding: 6px 8px; gap: 6px; }
@@ -876,6 +867,7 @@ class GoboonyBookingsCard extends HTMLElement {
           .dates, .days-row { font-size: 0.85em; gap: 4px; }
           .active-rental { padding: 10px; }
           .active-rental-renter { font-size: 1em; }
+          .card-footer { padding: 4px 8px 8px; }
         }
       </style>
     `;
