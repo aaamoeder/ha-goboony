@@ -198,6 +198,9 @@ The visual editor is organized in collapsible sections:
 | `show_checkout_date` | boolean | no | `true` | v1.7.0 | Show/hide the check-out date |
 | `show_relative_date` | boolean | no | `true` | v1.7.0 | Show/hide relative date badges (e.g. "in 3d") |
 | `show_gap_indicators` | boolean | no | `true` | v1.7.0 | Show/hide gap days and changeover indicators |
+| `show_upcoming` | boolean | no | `true` | v1.8.0 | Show/hide the Upcoming section (confirmed bookings that have not ended yet) |
+| `show_past` | boolean | no | `true` | v1.8.0 | Show/hide the Past section (confirmed bookings that ended before today) |
+| `max_past_bookings` | number | no | `0` | v1.8.0 | Limit the number of past bookings shown, most recent first (0 = all) |
 | `max_bookings` | number | no | `0` | v1.7.0 | Limit the number of bookings shown (0 = all) |
 | `compact_mode` | boolean | no | `false` | v1.7.0 | Use a compact single-line layout |
 
@@ -236,6 +239,9 @@ show_booking_number: true
 show_checkout_date: true
 show_relative_date: true
 show_gap_indicators: true
+show_upcoming: true
+show_past: true
+max_past_bookings: 0
 show_section_labels: true
 show_last_updated: true
 max_bookings: 0

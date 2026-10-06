@@ -52,6 +52,9 @@ class GoboonyBookingsCardEditor extends HTMLElement {
           { name: "show_checkout_date", default: true, selector: { boolean: {} } },
           { name: "show_relative_date", default: true, selector: { boolean: {} } },
           { name: "show_gap_indicators", default: true, selector: { boolean: {} } },
+          { name: "show_upcoming", default: true, selector: { boolean: {} } },
+          { name: "show_past", default: true, selector: { boolean: {} } },
+          { name: "max_past_bookings", default: 0, selector: { number: { min: 0, max: 50, step: 1, mode: "box" } } },
           { name: "max_bookings", default: 0, selector: { number: { min: 0, max: 50, step: 1, mode: "box" } } },
           { name: "compact_mode", default: false, selector: { boolean: {} } },
         ],
@@ -62,6 +65,9 @@ class GoboonyBookingsCardEditor extends HTMLElement {
           show_checkout_date: "Show check-out date",
           show_relative_date: "Show relative date (e.g. 'in 3d')",
           show_gap_indicators: "Show gap days between bookings",
+          show_upcoming: "Show upcoming bookings",
+          show_past: "Show past bookings",
+          max_past_bookings: "Max past bookings to show (0 = all)",
           max_bookings: "Max bookings to show (0 = all)",
           compact_mode: "Compact mode",
         },
@@ -142,6 +148,9 @@ class GoboonyBookingsCardEditor extends HTMLElement {
       show_gap_indicators: true,
       show_section_labels: true,
       show_last_updated: true,
+      show_upcoming: true,
+      show_past: true,
+      max_past_bookings: 0,
       max_bookings: 0,
       compact_mode: false,
     };
@@ -264,6 +273,9 @@ class GoboonyBookingsCard extends HTMLElement {
       show_gap_indicators: true,
       show_section_labels: true,
       show_last_updated: true,
+      show_upcoming: true,
+      show_past: true,
+      max_past_bookings: 0,
       max_bookings: 0,
       compact_mode: false,
     };
@@ -308,17 +320,29 @@ class GoboonyBookingsCard extends HTMLElement {
         return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
       }
     }
-    const ds = booking.dates;
-    if (ds) {
-      const m = ds.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/i);
-      if (m) {
-        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-        const ym = ds.match(/(\d{4})/);
-        const year = ym ? parseInt(ym[1]) : new Date().getFullYear();
-        return new Date(year, months[m[1].toLowerCase()], parseInt(m[2]));
-      }
-    }
-    return null;
+    const range = this._parseDatesRange(booking.dates);
+    return range ? range.start : null;
+  }
+
+  _monthIndex(name) {
+    const months = {jan:0,feb:1,mar:2,maa:2,mrt:2,apr:3,may:4,mei:4,jun:5,jul:6,aug:7,sep:8,oct:9,okt:9,nov:10,dec:11};
+    return months[String(name || "").toLowerCase().slice(0, 3)];
+  }
+
+  _parseDatesRange(ds) {
+    // 'October 03 - October 11, 2026' or 'October 28 - 31, 2026'
+    if (!ds) return null;
+    const t = String(ds).replace(/\s+/g, " ");
+    const m = t.match(/(\p{L}+)\s+(\d{1,2})(?:,?\s*(\d{4}))?\s*[\u2013\u2014-]\s*(?:(\p{L}+)\s+)?(\d{1,2}),?\s*(\d{4})/u);
+    if (!m) return null;
+    const sm = this._monthIndex(m[1]);
+    const em = m[4] ? this._monthIndex(m[4]) : sm;
+    if (sm === undefined || em === undefined) return null;
+    const endYear = parseInt(m[6]);
+    const start = new Date(m[3] ? parseInt(m[3]) : endYear, sm, parseInt(m[2]));
+    const end = new Date(endYear, em, parseInt(m[5]));
+    if (start > end && !m[3]) start.setFullYear(start.getFullYear() - 1);
+    return { start, end };
   }
 
   _extractEndDate(booking) {
@@ -331,7 +355,8 @@ class GoboonyBookingsCard extends HTMLElement {
         return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
       }
     }
-    return null;
+    const range = this._parseDatesRange(booking.dates);
+    return range ? range.end : null;
   }
 
   _relativeDate(startDate) {
@@ -367,15 +392,7 @@ class GoboonyBookingsCard extends HTMLElement {
     for (const b of bookings) {
       if (b.status !== "confirmed" && b.status !== "accepted" && b.status !== "request_accepted") continue;
       const startDate = this._extractStartDate(b);
-      let endDate = null;
-      if (b.check_out) {
-        const m = b.check_out.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
-        if (m) {
-          const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-          const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
-          endDate = new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
-        }
-      }
+      const endDate = this._extractEndDate(b);
       if (startDate && endDate) {
         const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
         const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
@@ -476,21 +493,43 @@ class GoboonyBookingsCard extends HTMLElement {
         if (bid && bid === activeBookingId) return false;
       }
       return true;
-    });
+    }).map(b => ({ ...b }));
 
-    // Group by status, sort by date within
-    const statusOrder = ["confirmed", "accepted", "request_accepted", "request", "inquiry", "message", "dates_changed_by_admin"];
-    filtered.sort((a, b) => {
-      const oa = statusOrder.indexOf(a.status); const ob = statusOrder.indexOf(b.status);
-      const sa = oa >= 0 ? oa : 99; const sb = ob >= 0 ? ob : 99;
+    // Split confirmed bookings by date into upcoming and past
+    const todayDay = new Date(); todayDay.setHours(0, 0, 0, 0);
+    const isConfirmedStatus = st => st === "confirmed" || st === "accepted" || st === "request_accepted";
+    const dayOf = d => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null);
+    for (const b of filtered) {
+      b._group = b.status;
+      if (isConfirmedStatus(b.status)) {
+        const end = dayOf(this._extractEndDate(b));
+        b._group = end && end < todayDay ? "past" : "upcoming";
+      }
+    }
+    const showUpcoming = this._config.show_upcoming !== false;
+    const showPast = this._config.show_past !== false;
+    const maxPast = parseInt(this._config.max_past_bookings) || 0;
+    let visible = filtered.filter(b => (b._group !== "upcoming" || showUpcoming) && (b._group !== "past" || showPast));
+
+    // Order: upcoming, other statuses, past last. Upcoming soonest first, past most recent first.
+    const groupOrder = ["upcoming", "request", "inquiry", "message", "dates_changed_by_admin", "past"];
+    const startOf = b => { const d = this._extractStartDate(b); return d ? d.getTime() : null; };
+    visible.sort((a, b) => {
+      const oa = groupOrder.indexOf(a._group); const ob = groupOrder.indexOf(b._group);
+      const sa = oa >= 0 ? oa : 50; const sb = ob >= 0 ? ob : 50;
       if (sa !== sb) return sa - sb;
-      const da = this._extractStartDate(a); const db = this._extractStartDate(b);
-      if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
-      return da - db;
+      const da = startOf(a); const db = startOf(b);
+      if (da === null && db === null) return 0; if (da === null) return 1; if (db === null) return -1;
+      return a._group === "past" ? db - da : da - db;
     });
+    if (maxPast > 0) {
+      let pastSeen = 0;
+      visible = visible.filter(b => b._group !== "past" || ++pastSeen <= maxPast);
+    }
+    filtered.length = 0; filtered.push(...visible);
 
     const sectionLabels = {
-      confirmed: "Confirmed", accepted: "Accepted", request_accepted: "Accepted",
+      upcoming: "Upcoming", past: "Past",
       request: "Requests", inquiry: "Inquiries", message: "Messages",
       dates_changed_by_admin: "Modified",
     };
@@ -517,18 +556,19 @@ class GoboonyBookingsCard extends HTMLElement {
       }
       for (let fi = 0; fi < limited.length; fi++) {
         const b = limited[fi];
-        const section = sectionLabels[b.status] || b.status;
+        const section = sectionLabels[b._group] || b._group;
         if (section !== lastSection) {
           if (showSectionLabels) {
             if (lastSection !== "") bookingRows += `<div class="section-divider"></div>`;
             bookingRows += `<div class="section-label">${this._esc(section)}</div>`;
           }
           lastSection = section;
-          if (section !== "Confirmed" && section !== "Accepted") prevConfirmedEnd = null;
+          if (section !== "Upcoming") prevConfirmedEnd = null;
         }
 
         // Gap indicator between confirmed bookings
-        const isConfirmed = b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted";
+        const isConfirmed = b._group === "upcoming";
+        const isPast = b._group === "past";
         if (showGapIndicators && isConfirmed && prevConfirmedEnd) {
           const thisStart = this._extractStartDate(b);
           if (thisStart && prevConfirmedEnd) {
@@ -560,7 +600,7 @@ class GoboonyBookingsCard extends HTMLElement {
         if (compact) {
           bookingRows += `
             <${hasUrl ? `a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
-              <div class="booking-compact" style="border-left-color:${si.color}">
+              <div class="booking-compact${isPast ? " past" : ""}" style="border-left-color:${isPast ? "var(--disabled-text-color, #9e9e9e)" : si.color}">
                 <span class="compact-renter">${renter}</span>
                 <span class="compact-dates">${dates}${relative ? ` <span class="relative">${relative}</span>` : ""}</span>
                 ${days && this._config.show_days !== false ? `<span class="compact-days">${days}</span>` : ""}
@@ -571,7 +611,7 @@ class GoboonyBookingsCard extends HTMLElement {
         } else {
           bookingRows += `
             <${hasUrl ? `a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="booking-link"` : `div class="booking-link-none"`}>
-              <div class="booking" style="border-left-color:${si.color}">
+              <div class="booking${isPast ? " past" : ""}" style="border-left-color:${isPast ? "var(--disabled-text-color, #9e9e9e)" : si.color}">
                 <div class="booking-header">
                   <div class="renter-block">
                     <span class="renter-name">${renter}</span>
@@ -730,6 +770,7 @@ class GoboonyBookingsCard extends HTMLElement {
         a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
 
         /* Normal booking row */
+        .booking.past, .booking-compact.past { opacity: 0.6; }
         .booking {
           border-left: 3px solid var(--divider-color, #e0e0e0);
           border-bottom: 1px solid var(--divider-color, #e0e0e0);

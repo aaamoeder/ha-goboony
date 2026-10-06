@@ -458,7 +458,7 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
 
         best_hours = None
         for b in bookings:
-            dt = parse_check_datetime(b.get("check_in", ""))
+            dt = parse_check_datetime(b.get("check_in", "")) or parse_check_in_date(b)
             if dt and dt > now:
                 hours = int((dt - now).total_seconds() / 3600)
                 if best_hours is None or hours < best_hours:
@@ -472,7 +472,7 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
         now = datetime.now(timezone.utc)
 
         for b in bookings:
-            dt = parse_check_datetime(b.get("check_in", ""))
+            dt = parse_check_datetime(b.get("check_in", "")) or parse_check_in_date(b)
             if dt and dt > now:
                 delta = dt - now
                 return {

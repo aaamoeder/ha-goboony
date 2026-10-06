@@ -175,13 +175,87 @@ class GoboonyApi:
 
         return bookings
 
+    @staticmethod
+    def _detail_rows(soup: BeautifulSoup) -> list[tuple[str, str]]:
+        """Return (label, value) pairs from the label/value rows of a booking page.
+
+        The current booking page renders every fact as a div holding exactly
+        two spans: a label and a value.
+        """
+        rows: list[tuple[str, str]] = []
+        for div in soup.find_all("div"):
+            kids = [c for c in div.find_all(recursive=False) if c.name]
+            if len(kids) != 2 or any(c.name != "span" for c in kids):
+                continue
+            label = " ".join(kids[0].get_text(" ", strip=True).split())
+            value = " ".join(kids[1].get_text(" ", strip=True).split())
+            if label and value:
+                rows.append((label, value))
+        return rows
+
+    def _parse_detail_rows(self, soup: BeautifulSoup, detail: dict) -> None:
+        """Fill detail from the label/value rows (current layout, en/nl labels)."""
+        seen_rental_fee = False
+        for label, value in self._detail_rows(soup):
+            low = label.lower()
+            if low in ("from", "van") and "check_in" not in detail:
+                detail["check_in"] = value
+            elif low in ("to", "tot") and "check_out" not in detail:
+                detail["check_out"] = value
+            elif low in ("number of days", "aantal dagen"):
+                m = re.search(r"\d+", value)
+                if m:
+                    detail["num_days"] = int(m.group())
+            elif low.startswith(("insurance premium", "verzekeringspremie", "verzekering")):
+                if "per day" in value.lower() or "per dag" in value.lower():
+                    detail.setdefault("insurance_per_day", value)
+            elif low.startswith(("total mileage", "totaal aantal km", "kilometerlimiet")):
+                detail.setdefault("mileage_limit", value)
+            elif low.startswith(("price per extra km", "prijs per extra km")):
+                detail.setdefault("price_per_extra_km", value)
+            elif low.startswith(("cancellation policy", "annuleringsvoorwaarden", "annulering")):
+                detail.setdefault("cancellation_policy", value)
+            elif low.startswith(("deductible", "eigen risico")):
+                detail.setdefault("deductible", value)
+            elif low.startswith(("rental fee", "huurprijs")) and not seen_rental_fee:
+                seen_rental_fee = True
+                detail["rental_fee"] = self._parse_eur(value)
+            elif low.startswith(("you earn", "jij verdient", "je verdient")):
+                detail["owner_earnings"] = self._parse_eur(value)
+
+        self._add_year_to_check_in(detail)
+
+    @staticmethod
+    def _add_year_to_check_in(detail: dict) -> None:
+        """Give check_in a year when only check_out has one ('Sat 3 Oct' + 'Sun 11 Oct 2026')."""
+        check_in = detail.get("check_in", "")
+        check_out = detail.get("check_out", "")
+        if not check_in or re.search(r"\b20\d{2}\b", check_in):
+            return
+        year_match = re.search(r"\b(20\d{2})\b", check_out)
+        month_re = r"(\d{1,2})\s+([A-Za-z]{3})"
+        m_in = re.search(month_re, check_in)
+        m_out = re.search(month_re, check_out)
+        if not (year_match and m_in and m_out):
+            return
+        year = int(year_match.group(1))
+        months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+        try:
+            if months.index(m_in.group(2).lower()) > months.index(m_out.group(2).lower()):
+                year -= 1
+        except ValueError:
+            return
+        detail["check_in"] = check_in.replace(m_in.group(0), f"{m_in.group(0)} {year}", 1)
+
     def get_booking_detail(self, booking_id: str) -> dict:
         """Get detailed booking info."""
         url = f"{BASE_URL}/dashboard/bookings/{booking_id}"
         soup = self._get_page(url)
         detail = {"booking_id": booking_id}
 
-        # Extract dates from table.dates
+        self._parse_detail_rows(soup, detail)
+
+        # Legacy layout: dates from table.dates
         dates_table = soup.find("table", class_="dates")
         if dates_table:
             rows = dates_table.find_all("tr")
@@ -468,7 +542,11 @@ class GoboonyApi:
                 except GoboonyAuthError:
                     raise
                 except Exception as err:
-                    _LOGGER.debug("Failed to get booking detail %s: %s", booking["booking_id"], err)
+                    _LOGGER.warning("Failed to get booking detail %s: %s", booking["booking_id"], err)
+            if bookings and not any(b.get("check_in") for b in bookings if b.get("status") in ("confirmed", "accepted", "request_accepted")):
+                _LOGGER.warning(
+                    "No check-in dates found on any confirmed booking page; the Goboony page layout may have changed. Falling back to the dates column"
+                )
             result["bookings"] = bookings
         except GoboonyAuthError:
             raise
