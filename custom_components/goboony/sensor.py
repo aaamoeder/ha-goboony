@@ -1,7 +1,7 @@
 """Sensor platform for Goboony."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GoboonyCoordinator
-from .date_utils import parse_check_datetime, parse_check_in_date
+from .date_utils import booking_date_range, parse_check_datetime, parse_check_in_date
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,6 +80,17 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
 
     def _get_confirmed_bookings(self) -> list[dict]:
         return [b for b in self._get_bookings() if b.get("status") in ("confirmed", "accepted", "request_accepted")]
+
+    def _get_upcoming_bookings(self) -> list[dict]:
+        """Confirmed bookings that have not started yet (or start today), soonest first."""
+        today = date.today()
+        upcoming = []
+        for b in self._get_confirmed_bookings():
+            rng = booking_date_range(b)
+            if rng and rng[0] >= today:
+                upcoming.append((rng[0], b))
+        upcoming.sort(key=lambda item: item[0])
+        return [b for _, b in upcoming]
 
     def _get_availability(self) -> dict:
         if not self.coordinator.data:
@@ -169,7 +180,7 @@ class GoboonyNextBookingSensor(GoboonyBaseSensor):
 
     @property
     def native_value(self) -> str | None:
-        bookings = self._get_confirmed_bookings()
+        bookings = self._get_upcoming_bookings()
         if bookings:
             b = bookings[0]
             return b.get("dates", "N/A")
@@ -177,7 +188,7 @@ class GoboonyNextBookingSensor(GoboonyBaseSensor):
 
     @property
     def extra_state_attributes(self) -> dict:
-        bookings = self._get_confirmed_bookings()
+        bookings = self._get_upcoming_bookings()
         if bookings:
             b = bookings[0]
             return {
