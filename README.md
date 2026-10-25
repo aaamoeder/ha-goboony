@@ -1,3 +1,10 @@
+## Purpose
+Home Assistant custom integration (HACS) for Goboony camper and motorhome rental owners. It reads your Goboony account and exposes bookings, a booking calendar and related sensors in Home Assistant, so you can see upcoming rentals and use them in dashboards and automations.
+
+- **For:** owners who rent out a camper on Goboony and run Home Assistant.
+- **Install:** add this repository as a custom repository in HACS, install "Goboony", restart Home Assistant and add the integration under Settings, Devices & services.
+- **Includes:** a Lovelace bookings card (`goboony-bookings-card.js`).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/banner.png" alt="Goboony for Home Assistant" width="800">
 </p>
