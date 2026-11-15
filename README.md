@@ -5,6 +5,10 @@ Home Assistant custom integration (HACS) for Goboony camper and motorhome rental
 - **Install:** add this repository as a custom repository in HACS, install "Goboony", restart Home Assistant and add the integration under Settings, Devices & services.
 - **Includes:** a Lovelace bookings card (`goboony-bookings-card.js`).
 
+## Status
+- **Phase:** release (stable, in daily use).
+- **Current version:** 1.8.1
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/banner.png" alt="Goboony for Home Assistant" width="800">
 </p>
