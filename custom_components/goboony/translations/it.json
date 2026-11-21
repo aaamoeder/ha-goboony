@@ -10,7 +10,7 @@
           "listing_id": "ID annuncio"
         },
         "data_description": {
-          "listing_id": "Il tuo ID annuncio Goboony (visibile nell'URL della pagina del tuo annuncio)"
+          "listing_id": "L'ID del tuo camper, visibile nell'URL della sua pagina (goboony.com/campers/ID). Funziona anche un vecchio ID annuncio Goboony."
         }
       },
       "reauth_confirm": {
@@ -24,7 +24,8 @@
     },
     "error": {
       "invalid_auth": "Credenziali non valide",
-      "cannot_connect": "Impossibile connettersi a Goboony"
+      "cannot_connect": "Impossibile connettersi a Goboony",
+      "listing_not_found": "Questo annuncio non fa parte dei camper del tuo account Goboony"
     },
     "abort": {
       "already_configured": "Questo annuncio è già configurato",

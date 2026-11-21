@@ -1,9 +1,8 @@
 """Calendar platform for Goboony."""
 from __future__ import annotations
 
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 import logging
-import re
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
@@ -11,10 +10,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, STATUS_CONFIRMED
 from .coordinator import GoboonyCoordinator
-from .date_utils import MONTH_MAP_SHORT
+from .date_utils import check_in_datetime, check_out_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,77 +33,18 @@ async def async_setup_entry(
     ])
 
 
-def _parse_booking_dates(dates_str: str) -> tuple[date | None, date | None]:
-    """Parse dates from booking string like 'Apr 27 - May 1, 2026'."""
-    if not dates_str:
-        return None, None
+def _all_day(start: str, end: str) -> tuple[date, date] | None:
+    """Return all-day event bounds for an inclusive ISO date range (end is exclusive)."""
     try:
-        parts = dates_str.split(" - ")
-        if len(parts) != 2:
-            return None, None
-
-        end_str = parts[1].strip()
-        start_str = parts[0].strip()
-
-        # Try to parse end date (usually has the year)
-        end_dt = None
-        for fmt in ["%b %d, %Y", "%d %b %Y", "%d %b, %Y"]:
-            try:
-                end_dt = datetime.strptime(end_str, fmt).date()
-                break
-            except ValueError:
-                continue
-
-        if not end_dt:
-            return None, None
-
-        year = end_dt.year
-
-        # Parse start date (often without year)
-        start_dt = None
-        for fmt in ["%b %d", "%b %d, %Y", "%d %b", "%d %b %Y"]:
-            try:
-                start_dt = datetime.strptime(start_str, fmt).date()
-                start_dt = start_dt.replace(year=year)
-                # If start > end, it started in the previous year
-                if start_dt > end_dt:
-                    start_dt = start_dt.replace(year=year - 1)
-                break
-            except ValueError:
-                continue
-
-        return start_dt, end_dt
-    except Exception:
-        return None, None
+        return date.fromisoformat(start), date.fromisoformat(end) + timedelta(days=1)
+    except (TypeError, ValueError):
+        return None
 
 
-def _parse_check_in_out(check_in: str, check_out: str) -> tuple[datetime | None, datetime | None]:
-    """Parse check-in/out strings like 'Mon 27 Apr 2:00 PM'."""
-    results = []
-    for text in [check_in, check_out]:
-        if not text:
-            results.append(None)
-            continue
-        dt = None
-        # Try formats with day name
-        for fmt in [
-            "%a %d %b %I:%M %p",
-            "%a %d %b %Y %I:%M %p",
-        ]:
-            try:
-                dt = datetime.strptime(text.strip(), fmt)
-                if dt.year < 2000:
-                    dt = dt.replace(year=datetime.now().year)
-                break
-            except ValueError:
-                continue
-        # Try extracting year from the string if present
-        if dt and dt.year < 2000:
-            year_match = re.search(r"20\d{2}", text)
-            if year_match:
-                dt = dt.replace(year=int(year_match.group()))
-        results.append(dt)
-    return results[0], results[1]
+def _as_datetime(value: date | datetime) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.combine(value, datetime.min.time(), tzinfo=dt_util.get_default_time_zone())
 
 
 class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
@@ -136,128 +77,72 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
 
     def _build_events(self) -> list[CalendarEvent]:
         """Build calendar events from coordinator data."""
-        events = []
+        events: list[CalendarEvent] = []
         if not self.coordinator.data:
             return events
 
-        # Add booking events
-        bookings = self.coordinator.data.get("bookings", [])
-        for booking in bookings:
-            status = booking.get("status", "")
-            if status not in ("confirmed", "accepted", "request_accepted"):
+        for booking in self.coordinator.data.get("bookings", []):
+            if booking.get("status") != STATUS_CONFIRMED:
+                continue
+            start = check_in_datetime(booking)
+            end = check_out_datetime(booking)
+            if not start or not end:
                 continue
 
-            renter = booking.get("renter", "Unknown")
-            earnings = booking.get("earnings")
-            booking_id = booking.get("booking_number", booking.get("booking_id", ""))
-
-            # Try detailed check-in/out first
-            check_in = booking.get("check_in", "")
-            check_out = booking.get("check_out", "")
-            start_dt, end_dt = _parse_check_in_out(check_in, check_out)
-
-            # Fall back to dates string for date-only
-            start_date = None
-            end_date = None
-            if not start_dt or not end_dt:
-                start_date, end_date = _parse_booking_dates(booking.get("dates", ""))
-
-            if not start_dt and not start_date:
-                continue
-
-            summary = f"Booking: {renter}"
+            renter = booking.get("renter") or "Unknown"
             description_parts = [
-                f"Booking: {booking_id}",
+                f"Booking: {booking.get('booking_number', '')}",
                 f"Renter: {renter}",
-                f"Status: {status}",
             ]
+            earnings = booking.get("earnings")
             if earnings:
                 description_parts.append(f"Earnings: EUR {earnings:.2f}")
-            num_days = booking.get("num_days")
-            if num_days:
-                description_parts.append(f"Days: {num_days}")
+            if booking.get("num_days"):
+                description_parts.append(f"Days: {booking['num_days']}")
+            if booking.get("url"):
+                description_parts.append(booking["url"])
 
-            description = "\n".join(description_parts)
+            events.append(CalendarEvent(
+                start=start,
+                end=end,
+                summary=f"Booking: {renter}",
+                description="\n".join(description_parts),
+                uid=f"goboony-booking-{booking.get('booking_id')}",
+            ))
 
-            if start_dt and end_dt:
-                events.append(CalendarEvent(
-                    start=start_dt,
-                    end=end_dt,
-                    summary=summary,
-                    description=description,
-                ))
-            elif start_date and end_date:
-                events.append(CalendarEvent(
-                    start=start_date,
-                    end=end_date,
-                    summary=summary,
-                    description=description,
-                ))
-
-        # Add blocked period events
         availability = self.coordinator.data.get("availability", {})
-        blocked_periods = availability.get("blocked_periods", [])
-        blocked_dates = availability.get("blocked_dates", [])
 
-        # Try to match blocked periods to their date ranges
-        # Group consecutive blocked dates into ranges
-        if blocked_dates:
-            sorted_dates = sorted(blocked_dates)
-            ranges = []
-            range_start = sorted_dates[0]
-            prev = sorted_dates[0]
-            for d in sorted_dates[1:]:
-                prev_date = date.fromisoformat(prev)
-                curr_date = date.fromisoformat(d)
-                if (curr_date - prev_date).days > 1:
-                    ranges.append((range_start, prev))
-                    range_start = d
-                prev = d
-            ranges.append((range_start, prev))
-
-            for i, (start, end) in enumerate(ranges):
-                # Try to find a matching named period
-                name = "Blocked"
-                if i < len(blocked_periods):
-                    name = blocked_periods[i].get("name", "Blocked")
-
+        for item in availability.get("external_bookings", []):
+            bounds = _all_day(item.get("start"), item.get("end"))
+            if bounds:
                 events.append(CalendarEvent(
-                    start=date.fromisoformat(start),
-                    end=date.fromisoformat(end) + timedelta(days=1),  # end is exclusive
-                    summary=f"Blocked: {name}",
+                    start=bounds[0],
+                    end=bounds[1],
+                    summary="Booking",
+                    description="Booking on the Goboony calendar without booking details",
+                ))
+
+        for period in availability.get("blocked_periods", []):
+            bounds = _all_day(period.get("start"), period.get("end"))
+            if bounds:
+                name = period.get("name") or "Blocked"
+                events.append(CalendarEvent(
+                    start=bounds[0],
+                    end=bounds[1],
+                    summary="Blocked" if name == "Blocked" else f"Blocked: {name}",
                     description=f"Blocked period: {name}",
                 ))
 
+        events.sort(key=lambda ev: _as_datetime(ev.start))
         return events
 
     @property
     def event(self) -> CalendarEvent | None:
         """Return the current or next upcoming event."""
-        events = self._build_events()
-        if not events:
-            return None
-
-        now = datetime.now()
-        today = now.date()
-
-        # Find active event (happening now)
-        for ev in events:
-            ev_start = ev.start if isinstance(ev.start, date) else ev.start.date()
-            ev_end = ev.end if isinstance(ev.end, date) else ev.end.date()
-            if ev_start <= today < ev_end:
+        now = dt_util.now()
+        for ev in self._build_events():
+            if _as_datetime(ev.end) > now:
                 return ev
-
-        # Find next upcoming event
-        future = []
-        for ev in events:
-            ev_start = ev.start if isinstance(ev.start, date) else ev.start.date()
-            if ev_start > today:
-                future.append(ev)
-
-        if future:
-            future.sort(key=lambda e: e.start if isinstance(e.start, date) else e.start.date())
-            return future[0]
-
         return None
 
     async def async_get_events(
@@ -267,14 +152,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
         end_date: datetime,
     ) -> list[CalendarEvent]:
         """Return events within a date range."""
-        events = self._build_events()
-        result = []
-
-        for ev in events:
-            ev_start = ev.start if isinstance(ev.start, datetime) else datetime.combine(ev.start, datetime.min.time())
-            ev_end = ev.end if isinstance(ev.end, datetime) else datetime.combine(ev.end, datetime.min.time())
-
-            if ev_end >= start_date and ev_start <= end_date:
-                result.append(ev)
-
-        return result
+        return [
+            ev for ev in self._build_events()
+            if _as_datetime(ev.end) > start_date and _as_datetime(ev.start) < end_date
+        ]

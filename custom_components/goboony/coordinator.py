@@ -55,7 +55,7 @@ class GoboonyCoordinator(DataUpdateCoordinator[dict]):
                 self.update_interval = self._normal_interval
             return data
         except GoboonyAuthError as err:
-            self.api.session.cookies.clear()
+            self.api.clear_session()
             self._consecutive_failures = 0
             self.update_interval = self._normal_interval
             raise ConfigEntryAuthFailed(

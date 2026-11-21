@@ -7,7 +7,7 @@ Home Assistant custom integration (HACS) for Goboony camper and motorhome rental
 
 ## Status
 - **Phase:** release (stable, in daily use).
-- **Current version:** 1.8.1
+- **Current version:** 2.0.0
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/aaamoeder/ha-goboony/main/images/banner.png" alt="Goboony for Home Assistant" width="800">
@@ -43,11 +43,11 @@ Home Assistant custom integration (HACS) for Goboony camper and motorhome rental
 
 | Feature | Description |
 |---------|-------------|
-| **Bookings overview** | Total, confirmed, accepted, pending and inquiry counts |
+| **Bookings overview** | Total, confirmed, pending and awaiting payment counts |
 | **Next booking** | Upcoming booking details with countdown |
 | **Check-in countdown** | Hours until next check-in |
-| **Earnings tracking** | Total confirmed + accepted earnings |
-| **Rate monitoring** | Base and peak season rates |
+| **Earnings tracking** | Total earnings of confirmed bookings |
+| **Rate monitoring** | Default, high and low season rates, mileage price and deposit |
 | **Calendar availability** | Booked, blocked and available day counts |
 | **Occupancy rate** | Percentage of booked vs available days |
 | **Blocked periods** | Named blocked periods (holidays, maintenance, etc.) |
@@ -91,7 +91,7 @@ Home Assistant custom integration (HACS) for Goboony camper and motorhome rental
 |------|------|----------|-------------|
 | `email` | string | yes | Your Goboony owner account email |
 | `password` | string | yes | Your Goboony password |
-| `listing_id` | string | yes | Found in the URL of your listing page (e.g. `goboony.com/listings/12345`) |
+| `listing_id` | string | yes | Your camper ID from the URL of your camper page (e.g. `goboony.com/campers/12345`). An old Goboony listing ID also works. |
 
 > The integration supports **re-authentication** — if your session expires, Home Assistant will prompt you to re-enter your credentials.
 
@@ -110,18 +110,18 @@ After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Confi
 | Sensor | Description | Unit | Category |
 |--------|-------------|------|----------|
 | Total bookings | Number of all bookings | — | — |
-| Confirmed bookings | Number of confirmed + accepted bookings | — | — |
+| Confirmed bookings | Number of confirmed (paid) bookings | — | — |
 | Next booking | Dates of the next confirmed booking | — | — |
 | Days until next booking | Countdown to next booking | days | — |
 | Check-in countdown | Hours until next check-in | hours | — |
-| Total earnings | Sum of confirmed + accepted booking earnings | EUR | — |
+| Total earnings | Sum of confirmed booking earnings | EUR | — |
 | Occupancy rate | Booked days as percentage of total | % | — |
 | Reviews | Listing rating (e.g. 5.0) with review count | — | — |
-| Base rate | Low season daily rate | EUR | Diagnostic |
-| Peak rate | High season daily rate | EUR | Diagnostic |
-| Booked days | Days with confirmed bookings | days | — |
-| Blocked days | Owner-blocked days | days | — |
-| Available days | Available days on calendar | days | — |
+| Base rate | Default daily rate (high and low season rates, mileage price and deposit as attributes) | EUR | Diagnostic |
+| Peak rate | Highest season daily rate | EUR | Diagnostic |
+| Booked days | Booked days in the coming 365 days | days | — |
+| Blocked days | Owner-blocked days in the coming 365 days | days | — |
+| Available days | Available days in the coming 365 days | days | — |
 | Blocked periods | Number of blocked periods | — | Diagnostic |
 
 ### Binary sensors
@@ -129,7 +129,7 @@ After setup, go to **Settings** > **Devices & Services** > **Goboony** > **Confi
 | Sensor | Description |
 |--------|-------------|
 | Currently rented | ON when the camper is currently rented out |
-| Pending requests | ON when there are open booking requests or inquiries |
+| Pending requests | ON when there are booking requests waiting for your answer |
 | Upcoming booking | ON when there is a future confirmed booking |
 | Turnaround | ON between a check-out and the next check-in |
 
@@ -166,7 +166,7 @@ The integration includes a custom bookings card that is **automatically register
 - Clickable bookings linking to Goboony detail page
 - Relative date badges ("in 3d", "tomorrow", etc.)
 - Review rating display in header
-- Multi-status filtering (confirmed, accepted, requests, inquiries, messages, modified)
+- Status filtering (confirmed, awaiting payment, requests)
 - Earnings per booking and total earnings in header
 - Compact mode for a denser layout
 - Fully themed using HA CSS variables — works with all themes (light, dark, custom)
@@ -219,7 +219,7 @@ The visual editor is organized in collapsible sections:
 
 | Name | Type | Required | Default | Since | Description |
 |------|------|----------|---------|-------|-------------|
-| `show_statuses` | list | no | all | v1.6.0 | Which booking statuses to display (confirmed, accepted, request, inquiry, message, modified) |
+| `show_statuses` | list | no | all | v1.6.0 | Which booking statuses to display (confirmed, awaiting_payment, request) |
 
 #### Appearance
 
@@ -237,7 +237,7 @@ review_entity: sensor.goboony_68972_reviews
 title: My Camper Bookings
 show_statuses:
   - confirmed
-  - accepted
+  - awaiting_payment
   - request
 show_header_icon: true
 show_total_earnings: true
@@ -262,7 +262,8 @@ compact_mode: false
 ## Calendar
 
 The integration creates a native Home Assistant **calendar entity** showing:
-- Confirmed and accepted bookings with renter name and dates
+- Confirmed bookings with renter name and check-in and check-out time
+- Bookings that are only on the Goboony calendar (such as bookings made on the old Goboony site)
 - Owner-blocked periods
 
 This works with all calendar cards and automations in Home Assistant.
@@ -273,12 +274,16 @@ Go to **Settings** > **Devices & Services** > **Goboony** > **three dots** > **D
 
 ## How it works
 
-Goboony does not provide a public API. Their mobile app uses server-rendered HTML via [Turbo Native](https://turbo.hotwired.dev/handbook/native). This integration scrapes the owner dashboard to retrieve your data.
+Goboony does not provide a public API. Since November 2026 Goboony runs on the Yescapa platform, and its website reads your data from a JSON API. This integration uses the same API with your owner account.
 
-- **Polling interval**: configurable, default 60 minutes (range: 15–1440 minutes)
+- **Polling interval**: configurable, default 60 minutes (range: 15 to 1440 minutes)
 - **Resilient fetching**: on failure, retries every 2 minutes while keeping previous data (up to 3 consecutive failures)
-- **Authentication**: lazy login — only authenticates when session cookies expire
-- **Data sources**: dashboard bookings, booking details, availability calendar, rates, public listing page
+- **Authentication**: logs in with your email and password and logs in again shortly before the access token expires (every 3 hours)
+- **Data sources**: owner bookings, calendar periods, season prices, price details and your camper listing
+
+### Upgrading from 1.x
+
+Version 2.0.0 is needed since Goboony moved to the Yescapa platform; 1.x can no longer log in. Your existing entities keep working: an old Goboony listing ID is mapped to the new camper ID automatically. Bookings from the old Goboony site were not moved to the new platform, so the booking counts and earnings start again from the bookings on the new platform. Old bookings that are still on the calendar count as booked days.
 
 ## Supported languages
 
@@ -300,12 +305,12 @@ The integration UI is translated into all Goboony market languages:
 | Authentication failed | Check credentials, re-authenticate via **Settings > Integrations** |
 | No bookings shown | Verify your listing ID is correct |
 | Card not appearing | Make sure the integration is loaded, then search for "Goboony Bookings" when adding a card |
-| Accepted bookings not showing | Make sure "Accepted" is checked in card settings, and clear browser cache |
+| Unpaid bookings not showing | Make sure "Awaiting payment" is checked in card settings, and clear browser cache |
 | Sensors showing "unknown" | Wait for the first data fetch (up to 60 min) or press the Refresh button |
 
 ## Disclaimer
 
-This integration is **not affiliated with or endorsed by Goboony**. It relies on web scraping, which means it may break if Goboony changes their website. Use at your own risk.
+This integration is **not affiliated with or endorsed by Goboony**. It uses the private API of the Goboony website, which means it may break if Goboony changes it. Use at your own risk.
 
 ## License
 

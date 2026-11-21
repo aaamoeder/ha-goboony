@@ -1,16 +1,62 @@
-"""API client for Goboony."""
+"""API client for Goboony.
+
+Goboony runs on the Yescapa platform. The website talks to a JSON API with
+OAuth bearer tokens; this client uses the same endpoints.
+"""
 from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime
+import time
+from datetime import date, timedelta
 
 import requests
-from bs4 import BeautifulSoup
 
-from .const import BASE_URL, URL_DASHBOARD_BOOKINGS, URL_SIGN_IN
+from .const import (
+    API_KEY,
+    API_URL,
+    BASE_URL,
+    STATUS_AWAITING_PAYMENT,
+    STATUS_CONFIRMED,
+    STATUS_REQUEST,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+# Days ahead covered by the availability sensors
+AVAILABILITY_WINDOW_DAYS = 365
+
+# Renew the access token this many seconds before it expires
+TOKEN_MARGIN = 300
+
+MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+# Platform booking state -> status used by the sensors, calendar and card
+STATE_STATUS = {
+    "VALIDATED": STATUS_REQUEST,
+    "ACCEPTED": STATUS_AWAITING_PAYMENT,
+    "TO_COME_NOT_PAID": STATUS_AWAITING_PAYMENT,
+    "TO_COME": STATUS_CONFIRMED,
+    "ONGOING": STATUS_CONFIRMED,
+    "FINISHED": STATUS_CONFIRMED,
+    "DONE": STATUS_CONFIRMED,
+}
+
+# States that are not (or no longer) a booking
+IGNORED_STATES = {
+    "ACCEPTED_EXP",
+    "CANCELLED_BOTH",
+    "CANCELLED_GUEST",
+    "CANCELLED_OWNER",
+    "CANCELLED_STAFF",
+}
+
+# Calendar block that holds a booking imported from the old Goboony site
+REASON_GOBOONY_BOOKING = "GOBOONY_BOOKING"
 
 
 class GoboonyApiError(Exception):
@@ -21,507 +67,349 @@ class GoboonyAuthError(GoboonyApiError):
     """Authentication error."""
 
 
+class GoboonyListingNotFound(GoboonyApiError):
+    """The configured listing is not one of the account's campers."""
+
+
+def _format_check(day: date, time_text: str) -> str:
+    """Format a check-in/out moment like 'Sat 3 Oct 2026 – 2:00 PM'."""
+    hour, _, minute = time_text.partition(":")
+    hour_i = int(hour)
+    minute_i = int(minute or 0)
+    suffix = "AM" if hour_i < 12 else "PM"
+    hour_12 = hour_i % 12 or 12
+    return (
+        f"{WEEKDAYS[day.weekday()]} {day.day} {MONTHS[day.month - 1][:3]} {day.year}"
+        f" – {hour_12}:{minute_i:02d} {suffix}"
+    )
+
+
+def _format_range(start: date, end: date) -> str:
+    """Format a date range like 'October 03 - October 11, 2026'."""
+    start_text = f"{MONTHS[start.month - 1]} {start.day:02d}"
+    if start.year != end.year:
+        start_text += f", {start.year}"
+    return f"{start_text} - {MONTHS[end.month - 1]} {end.day:02d}, {end.year}"
+
+
+def _to_float(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _days(start: date, end: date) -> list[date]:
+    """Return every day from start to end, both included."""
+    return [start + timedelta(days=i) for i in range((end - start).days + 1)]
+
+
 class GoboonyApi:
-    """API client for Goboony (scraping-based)."""
+    """API client for Goboony."""
 
     def __init__(self, email: str, password: str, listing_id: str) -> None:
         self.email = email
         self.password = password
-        self.listing_id = listing_id
+        self.listing_id = str(listing_id).strip()
+        self.product_id: int | None = None
+        self._access_token: str | None = None
+        self._token_expires = 0.0
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0",
+            "X-API-KEY": API_KEY,
+            "Accept": "application/json",
+            "Accept-Language": "en",
+            "Origin": BASE_URL,
+            "Referer": f"{BASE_URL}/",
         })
 
     def close(self) -> None:
         """Close the HTTP session."""
         self.session.close()
 
+    def clear_session(self) -> None:
+        """Forget the access token so the next call logs in again."""
+        self._access_token = None
+        self._token_expires = 0.0
+        self.session.headers.pop("Authorization", None)
+
     def login(self) -> None:
-        """Authenticate with Goboony via Devise."""
-        # Get CSRF token
-        resp = self.session.get(URL_SIGN_IN, timeout=30)
-        if resp.status_code != 200:
-            raise GoboonyApiError(f"Failed to load sign-in page: {resp.status_code}")
+        """Log in with email and password and keep the access token."""
+        try:
+            resp = self.session.post(
+                f"{API_URL}/v4/users/auth/login/",
+                json={
+                    "username": self.email,
+                    "password": self.password,
+                    "client_id": API_KEY,
+                    "grant_type": "password",
+                },
+                timeout=30,
+            )
+        except requests.RequestException as err:
+            raise GoboonyApiError(f"Connection error during login: {err}") from err
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        csrf_meta = soup.find("meta", attrs={"name": "csrf-token"})
-        if not csrf_meta:
-            raise GoboonyApiError("Could not find CSRF token")
-        csrf_token = csrf_meta["content"]
-
-        # Submit login form
-        resp = self.session.post(
-            URL_SIGN_IN,
-            data={
-                "user[email]": self.email,
-                "user[password]": self.password,
-                "authenticity_token": csrf_token,
-                "commit": "Sign in",
-            },
-            timeout=30,
-            allow_redirects=True,
-        )
-
-        # Check if login succeeded (should redirect to dashboard)
-        if "sign_in" in resp.url or resp.status_code != 200:
+        if resp.status_code in (400, 401):
             raise GoboonyAuthError("Invalid credentials")
+        if resp.status_code != 200:
+            raise GoboonyApiError(f"Login failed: HTTP {resp.status_code}")
+        try:
+            token = resp.json()
+            self._access_token = token["access_token"]
+            expires_in = int(token.get("expires_in", 3600))
+        except (ValueError, KeyError, TypeError) as err:
+            raise GoboonyApiError("Unexpected login response") from err
 
+        self._token_expires = time.monotonic() + expires_in - TOKEN_MARGIN
+        self.session.headers["Authorization"] = f"Bearer {self._access_token}"
         _LOGGER.debug("Successfully authenticated with Goboony")
 
-    def _get_page(self, url: str) -> BeautifulSoup:
-        """Fetch a page and return parsed HTML."""
-        try:
-            resp = self.session.get(url, timeout=30)
-        except requests.ConnectionError as err:
-            raise GoboonyApiError(f"Connection error for {url}: {err}") from err
-        except requests.Timeout as err:
-            raise GoboonyApiError(f"Timeout loading {url}") from err
-
-        if resp.status_code == 401 or "sign_in" in resp.url:
-            # Re-authenticate and retry
-            _LOGGER.debug("Session expired, re-authenticating")
+    def _ensure_logged_in(self) -> None:
+        if not self._access_token or time.monotonic() >= self._token_expires:
             self.login()
-            try:
-                resp = self.session.get(url, timeout=30)
-            except (requests.ConnectionError, requests.Timeout) as err:
-                raise GoboonyApiError(f"Failed after re-auth for {url}: {err}") from err
 
-        if resp.status_code != 200:
-            raise GoboonyApiError(f"Failed to load {url}: {resp.status_code}")
-        return BeautifulSoup(resp.text, "html.parser")
-
-    def _parse_eur(self, text: str) -> float | None:
-        """Parse EUR value from text like 'EUR 392.40' or '€ 392,40'."""
-        if not text:
-            return None
-        text = text.strip()
-        # Remove currency symbols/text
-        text = re.sub(r"[€EUR\s]", "", text)
-        # Detect European format: 1.234,56 (dot as thousands, comma as decimal)
-        if re.match(r"^\d{1,3}(\.\d{3})*(,\d+)?$", text):
-            text = text.replace(".", "").replace(",", ".")
-        else:
-            # English format: 1,234.56 (comma as thousands, dot as decimal)
-            text = text.replace(",", "")
+    def _get(self, path: str, params: dict | None = None):
+        """GET an API path and return the decoded JSON."""
+        self._ensure_logged_in()
+        url = f"{API_URL}{path}"
         try:
-            return float(text)
-        except (ValueError, TypeError):
-            return None
+            resp = self.session.get(url, params=params, timeout=30)
+            if resp.status_code == 401:
+                _LOGGER.debug("Access token rejected, logging in again")
+                self.clear_session()
+                self.login()
+                resp = self.session.get(url, params=params, timeout=30)
+        except requests.RequestException as err:
+            raise GoboonyApiError(f"Connection error for {path}: {err}") from err
 
-    def _parse_date(self, text: str) -> str | None:
-        """Parse date from text like 'Mon 27 Apr 2:00 PM'."""
-        if not text:
+        if resp.status_code == 401:
+            raise GoboonyAuthError("Access token rejected")
+        if resp.status_code != 200:
+            raise GoboonyApiError(f"Failed to load {path}: HTTP {resp.status_code}")
+        try:
+            return resp.json()
+        except ValueError as err:
+            raise GoboonyApiError(f"Invalid JSON from {path}") from err
+
+    def _get_products(self) -> list[dict]:
+        return self._get("/3/products/me/paginated/").get("results", [])
+
+    def _legacy_product_id(self) -> int | None:
+        """Map an old Goboony listing ID to the new camper ID via the site redirect."""
+        try:
+            resp = self.session.head(
+                f"{BASE_URL}/listings/{self.listing_id}", allow_redirects=False, timeout=30
+            )
+        except requests.RequestException:
             return None
-        # Try common formats
-        text = text.strip()
-        for fmt in [
-            "%a %d %b %I:%M %p",
-            "%a %d %b %Y %I:%M %p",
-            "%d %b %Y",
-            "%b %d, %Y",
-        ]:
-            try:
-                dt = datetime.strptime(text, fmt)
-                if dt.year < 2000:
-                    dt = dt.replace(year=datetime.now().year)
-                return dt.isoformat()
-            except ValueError:
-                continue
-        return text
+        match = re.search(r"/(?:camper/ysc|campers)/(\d+)", resp.headers.get("Location", ""))
+        return int(match.group(1)) if match else None
+
+    def resolve_product(self, products: list[dict] | None = None) -> dict:
+        """Return the camper that belongs to the configured listing ID.
+
+        The listing ID may be the new camper ID or the ID of the old Goboony
+        site, which the site still redirects to the new camper page.
+        """
+        if products is None:
+            products = self._get_products()
+        by_id = {p.get("id"): p for p in products}
+
+        if self.product_id in by_id:
+            return by_id[self.product_id]
+
+        candidates = []
+        if self.listing_id.isdigit():
+            candidates.append(int(self.listing_id))
+        legacy = self._legacy_product_id()
+        if legacy:
+            candidates.append(legacy)
+        for candidate in candidates:
+            if candidate in by_id:
+                self.product_id = candidate
+                _LOGGER.debug("Listing %s is camper %s", self.listing_id, candidate)
+                return by_id[candidate]
+
+        raise GoboonyListingNotFound(
+            f"Listing {self.listing_id} is not one of the campers on this account"
+        )
+
+    def validate(self) -> None:
+        """Log in and check that the listing belongs to the account."""
+        self.login()
+        self.resolve_product()
 
     def get_bookings(self) -> list[dict]:
-        """Get all bookings from dashboard."""
-        soup = self._get_page(URL_DASHBOARD_BOOKINGS)
+        """Return the owner's bookings for this camper."""
         bookings = []
-
-        rows = soup.select("tr[data-clickable-destination-value]")
-        for row in rows:
-            cols = row.find_all("td")
-            if len(cols) < 7:
-                continue
-
-            href = row.get("data-clickable-destination-value", "")
-            booking_id = href.split("/")[-1] if href else ""
-
-            # Extract status
-            status_cell = cols[1]
-            status_span = status_cell.find("span")
-            status = status_span.get_text(strip=True) if status_span else ""
-
-            # Extract booking number
-            booking_num = cols[2].get_text(strip=True)
-
-            # Extract renter
-            renter = cols[3].get_text(strip=True)
-
-            # Extract dates
-            dates = cols[4].get_text(strip=True)
-
-            # Extract earnings (data-value in cents)
-            earn_cell = cols[6]
-            earn_value = earn_cell.get("data-value")
-            earnings = float(earn_value) / 100 if earn_value else None
-
-            bookings.append({
-                "booking_id": booking_id,
-                "booking_number": booking_num,
-                "status": status.lower().replace(" ", "_"),
-                "renter": renter,
-                "dates": dates,
-                "earnings": earnings,
-                "url": f"{BASE_URL}{href}" if href else "",
-            })
-
+        page = 1
+        while True:
+            data = self._get("/v4/bookings-owner/", {"page": page, "page_size": 50})
+            for item in data.get("results", []):
+                if item.get("camper", {}).get("id") not in (None, self.product_id):
+                    continue
+                booking = self._map_booking(item)
+                if booking:
+                    bookings.append(booking)
+            if not data.get("next"):
+                break
+            page += 1
         return bookings
 
-    @staticmethod
-    def _detail_rows(soup: BeautifulSoup) -> list[tuple[str, str]]:
-        """Return (label, value) pairs from the label/value rows of a booking page.
+    def _map_booking(self, item: dict) -> dict | None:
+        state = item.get("state", "")
+        if state in IGNORED_STATES:
+            return None
+        status = STATE_STATUS.get(state)
+        if status is None:
+            _LOGGER.debug("Unknown booking state %s", state)
+            status = state.lower()
 
-        The current booking page renders every fact as a div holding exactly
-        two spans: a label and a value.
-        """
-        rows: list[tuple[str, str]] = []
-        for div in soup.find_all("div"):
-            kids = [c for c in div.find_all(recursive=False) if c.name]
-            if len(kids) != 2 or any(c.name != "span" for c in kids):
-                continue
-            label = " ".join(kids[0].get_text(" ", strip=True).split())
-            value = " ".join(kids[1].get_text(" ", strip=True).split())
-            if label and value:
-                rows.append((label, value))
-        return rows
-
-    def _parse_detail_rows(self, soup: BeautifulSoup, detail: dict) -> None:
-        """Fill detail from the label/value rows (current layout, en/nl labels)."""
-        seen_rental_fee = False
-        for label, value in self._detail_rows(soup):
-            low = label.lower()
-            if low in ("from", "van") and "check_in" not in detail:
-                detail["check_in"] = value
-            elif low in ("to", "tot") and "check_out" not in detail:
-                detail["check_out"] = value
-            elif low in ("number of days", "aantal dagen"):
-                m = re.search(r"\d+", value)
-                if m:
-                    detail["num_days"] = int(m.group())
-            elif low.startswith(("insurance premium", "verzekeringspremie", "verzekering")):
-                if "per day" in value.lower() or "per dag" in value.lower():
-                    detail.setdefault("insurance_per_day", value)
-            elif low.startswith(("total mileage", "totaal aantal km", "kilometerlimiet")):
-                detail.setdefault("mileage_limit", value)
-            elif low.startswith(("price per extra km", "prijs per extra km")):
-                detail.setdefault("price_per_extra_km", value)
-            elif low.startswith(("cancellation policy", "annuleringsvoorwaarden", "annulering")):
-                detail.setdefault("cancellation_policy", value)
-            elif low.startswith(("deductible", "eigen risico")):
-                detail.setdefault("deductible", value)
-            elif low.startswith(("rental fee", "huurprijs")) and not seen_rental_fee:
-                seen_rental_fee = True
-                detail["rental_fee"] = self._parse_eur(value)
-            elif low.startswith(("you earn", "jij verdient", "je verdient")):
-                detail["owner_earnings"] = self._parse_eur(value)
-
-        self._add_year_to_check_in(detail)
-
-    @staticmethod
-    def _add_year_to_check_in(detail: dict) -> None:
-        """Give check_in a year when only check_out has one ('Sat 3 Oct' + 'Sun 11 Oct 2026')."""
-        check_in = detail.get("check_in", "")
-        check_out = detail.get("check_out", "")
-        if not check_in or re.search(r"\b20\d{2}\b", check_in):
-            return
-        year_match = re.search(r"\b(20\d{2})\b", check_out)
-        month_re = r"(\d{1,2})\s+([A-Za-z]{3})"
-        m_in = re.search(month_re, check_in)
-        m_out = re.search(month_re, check_out)
-        if not (year_match and m_in and m_out):
-            return
-        year = int(year_match.group(1))
-        months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
         try:
-            if months.index(m_in.group(2).lower()) > months.index(m_out.group(2).lower()):
-                year -= 1
-        except ValueError:
-            return
-        detail["check_in"] = check_in.replace(m_in.group(0), f"{m_in.group(0)} {year}", 1)
+            start = date.fromisoformat(item["date_from"][:10])
+            end = date.fromisoformat(item["date_to"][:10])
+        except (KeyError, TypeError, ValueError):
+            return None
 
-    def get_booking_detail(self, booking_id: str) -> dict:
-        """Get detailed booking info."""
-        url = f"{BASE_URL}/dashboard/bookings/{booking_id}"
-        soup = self._get_page(url)
-        detail = {"booking_id": booking_id}
+        pickup = (item.get("pickup") or {}).get("time") or f"{item.get('hour_from', 14)}:00"
+        dropoff = (item.get("dropoff") or {}).get("time") or f"{item.get('hour_to', 12)}:00"
+        guest = item.get("guest") or {}
+        renter = " ".join(
+            part for part in (guest.get("first_name"), guest.get("last_name")) if part
+        )
+        booking_id = str(item.get("id", ""))
 
-        self._parse_detail_rows(soup, detail)
-
-        # Legacy layout: dates from table.dates
-        dates_table = soup.find("table", class_="dates")
-        if dates_table:
-            rows = dates_table.find_all("tr")
-            for row in rows:
-                th = row.find("th")
-                td = row.find("td")
-                if th and td:
-                    label = th.get_text(strip=True).lower()
-                    value = td.get_text(strip=True)
-                    if "from" in label or "van" in label:
-                        detail["check_in"] = value
-                    elif "to" in label or "tot" in label:
-                        detail["check_out"] = value
-
-        # Extract terms from table.terms
-        terms_table = soup.find("table", class_="terms")
-        if terms_table:
-            rows = terms_table.find_all("tr")
-            for row in rows:
-                th = row.find("th")
-                td = row.find("td")
-                if th and td:
-                    label = th.get_text(strip=True).lower()
-                    value = td.get_text(strip=True)
-                    if "days" in label or "dagen" in label:
-                        try:
-                            detail["num_days"] = int(re.search(r"\d+", value).group())
-                        except (AttributeError, ValueError):
-                            _LOGGER.debug("Failed to parse num_days from: %s", value)
-                    elif "insurance" in label or "verzekering" in label:
-                        detail["insurance_per_day"] = value
-                    elif "mileage" in label or "kilometer" in label:
-                        detail["mileage_limit"] = value
-                    elif "extra km" in label:
-                        detail["price_per_extra_km"] = value
-                    elif "cancellation" in label or "annulering" in label:
-                        detail["cancellation_policy"] = value
-                    elif "deductible" in label or "eigen risico" in label:
-                        detail["deductible"] = value
-
-        # Extract rates from table.rates
-        rates_table = soup.find("table", class_="rates")
-        if rates_table:
-            rows = rates_table.find_all("tr")
-            for row in rows:
-                th = row.find("th")
-                td = row.find("td")
-                if th and td:
-                    label = th.get_text(strip=True).lower()
-                    value = td.get_text(strip=True)
-                    if "you earn" in label or "jij verdient" in label:
-                        detail["owner_earnings"] = self._parse_eur(value)
-                    elif "rental" in label or "huur" in label:
-                        detail["rental_fee"] = self._parse_eur(value)
-
-        # Extract total (traveller pays)
-        total_table = soup.find("table", class_="total")
-        if total_table:
-            td = total_table.find("td")
-            if td:
-                detail["traveller_total"] = self._parse_eur(td.get_text(strip=True))
-
-        # Extract booking state
-        state_el = soup.find(attrs={"data-booking-state": True})
-        if state_el:
-            detail["state"] = state_el.get("data-booking-state")
-
-        return detail
-
-    def get_availability(self) -> dict:
-        """Get calendar availability for the listing."""
-        url = f"{BASE_URL}/dashboard/listings/{self.listing_id}/availability/edit"
-        soup = self._get_page(url)
-
-        result = {
-            "booked_dates": [],
-            "blocked_dates": [],
-            "available_dates": [],
-            "blocked_periods": [],
-            "bookings_on_calendar": [],
+        return {
+            "booking_id": booking_id,
+            "booking_number": booking_id,
+            "status": status,
+            "state": state,
+            "renter": renter,
+            "dates": _format_range(start, end),
+            "check_in": _format_check(start, pickup),
+            "check_out": _format_check(end, dropoff),
+            "num_days": (end - start).days + 1,
+            "earnings": _to_float(item.get("total_earnings")),
+            "url": f"{BASE_URL}/d/bookings/{booking_id}",
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "check_in_time": pickup,
+            "check_out_time": dropoff,
         }
 
-        # Parse calendar cells
-        cells = soup.find_all("td", attrs={"data-date": True})
-        current_booking_start = None
-        current_block_start = None
-        current_block_name = None
+    def get_availability(self, bookings: list[dict]) -> dict:
+        """Return booked, blocked and available days for the coming year."""
+        periods = self._get(f"/3/products/{self.product_id}/calendar/periods/")
+        today = date.today()
+        window_end = today + timedelta(days=AVAILABILITY_WINDOW_DAYS - 1)
 
-        for cell in cells:
-            date_str = cell.get("data-date", "")
-            classes = cell.get("class", [])
+        booked: set[date] = set()
+        blocked: set[date] = set()
+        blocked_periods = []
+        bookings_on_calendar = []
+        external_bookings = []
+        known = {(b["start"], b["end"]) for b in bookings if b.get("status") == STATUS_CONFIRMED}
 
-            if "has_booking" in classes:
-                result["booked_dates"].append(date_str)
-                if "start_of_booking" in classes:
-                    current_booking_start = date_str
-                if "end_of_booking" in classes and current_booking_start:
-                    result["bookings_on_calendar"].append({
-                        "start": current_booking_start,
-                        "end": date_str,
-                    })
-                    current_booking_start = None
-            elif "has_blocked_period" in classes:
-                result["blocked_dates"].append(date_str)
-            elif "available" in classes:
-                result["available_dates"].append(date_str)
+        for b in bookings:
+            if b.get("status") != STATUS_CONFIRMED:
+                continue
+            start, end = date.fromisoformat(b["start"]), date.fromisoformat(b["end"])
+            booked.update(_days(start, end))
+            bookings_on_calendar.append({"start": b["start"], "end": b["end"]})
 
-        # Extract blocked periods with names
-        blocked_links = soup.find_all("a", href=re.compile(r"/blocked_periods/\d+"))
-        for link in blocked_links:
-            period_id = re.search(r"/blocked_periods/(\d+)", link["href"])
-            if period_id:
-                result["blocked_periods"].append({
-                    "id": period_id.group(1),
-                    "name": link.get_text(strip=True),
-                    "url": link["href"],
+        for period in periods:
+            if period.get("available") or period.get("is_archived"):
+                continue
+            try:
+                start = date.fromisoformat(period["date_from"][:10])
+                end = date.fromisoformat(period["date_to"][:10])
+            except (KeyError, TypeError, ValueError):
+                continue
+            days = _days(start, end)
+            reason = period.get("non_available_reason")
+            if period.get("booking_id") or reason == REASON_GOBOONY_BOOKING:
+                booked.update(days)
+                span = (start.isoformat(), end.isoformat())
+                if span not in known:
+                    # A booking that is only on the calendar, such as one from the old Goboony site
+                    bookings_on_calendar.append({"start": span[0], "end": span[1]})
+                    external_bookings.append({"start": span[0], "end": span[1]})
+                continue
+            blocked.update(days)
+            if end >= today:
+                blocked_periods.append({
+                    "id": str(period.get("id", "")),
+                    "name": (reason or "Blocked").replace("_", " ").capitalize(),
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
                 })
 
-        # Extract pickup/return settings
-        pickup_select = soup.find("select", attrs={"name": re.compile(r"pickup_time|check_in_time")})
-        if pickup_select:
-            selected = pickup_select.find("option", selected=True)
-            if selected:
-                result["pickup_time"] = selected.get_text(strip=True)
+        window = set(_days(today, window_end))
+        booked_in = sorted(booked & window)
+        blocked_in = sorted((blocked - booked) & window)
+        available_in = sorted(window - booked - blocked)
+        blocked_periods.sort(key=lambda p: p["start"])
 
-        return_select = soup.find("select", attrs={"name": re.compile(r"return_time|check_out_time")})
-        if return_select:
-            selected = return_select.find("option", selected=True)
-            if selected:
-                result["return_time"] = selected.get_text(strip=True)
-
-        return result
-
-    def get_rates(self) -> dict:
-        """Get pricing/rates for the listing."""
-        url = f"{BASE_URL}/dashboard/listings/{self.listing_id}/rates/edit"
-        soup = self._get_page(url)
-
-        rates = {}
-        fields = {
-            "peak_season_rate": "peak_rate",
-            "shoulder_season_early_rate": "shoulder_early_rate",
-            "shoulder_season_late_rate": "shoulder_late_rate",
-            "base_rate": "base_rate",
-            "cleaning_fee": "cleaning_fee",
-            "price_per_extra_km": "price_per_extra_km",
-            "max_number_of_km": "max_km_per_week",
+        return {
+            "booked_dates": [d.isoformat() for d in booked_in],
+            "blocked_dates": [d.isoformat() for d in blocked_in],
+            "available_dates": [d.isoformat() for d in available_in],
+            "blocked_periods": blocked_periods,
+            "bookings_on_calendar": sorted(bookings_on_calendar, key=lambda p: p["start"]),
+            "external_bookings": sorted(external_bookings, key=lambda p: p["start"]),
         }
 
-        for field_name, key in fields.items():
-            inp = soup.find("input", attrs={"name": re.compile(field_name)})
-            if inp:
-                val = inp.get("value", "")
-                try:
-                    rates[key] = float(val) if val else 0
-                except ValueError:
-                    rates[key] = val
+    def get_rates(self) -> dict:
+        """Return the daily rates and mileage pricing of the camper."""
+        prices = self._get(f"/3/products/{self.product_id}/calendar/prices/")
+        details = self._get(f"/3/products/{self.product_id}/prices-details/")
 
-        # Extract discount checkboxes and values
-        discounts = {}
-        for inp in soup.find_all("input", attrs={"type": "checkbox", "name": re.compile(r"discount")}):
-            name = inp.get("name", "")
-            checked = inp.has_attr("checked")
-            # Find associated value input
-            val_inp = soup.find("input", attrs={"name": name.replace("[active]", "[percentage]")})
-            if val_inp:
-                try:
-                    discounts[name] = {
-                        "active": checked,
-                        "percentage": float(val_inp.get("value", 0)),
-                    }
-                except ValueError:
-                    pass
+        active = [p for p in prices if not p.get("is_archived")]
+        default = next((p for p in active if p.get("is_default")), None)
+        seasons = [p for p in active if not p.get("is_default")]
 
-        if discounts:
-            rates["discounts"] = discounts
+        def value(p):
+            return _to_float(p.get("value")) if p else None
 
-        return rates
+        season_values = [v for v in (value(p) for p in seasons) if v is not None]
+        return {
+            "base_rate": value(default),
+            "peak_rate": max(season_values) if season_values else None,
+            "low_rate": min(season_values) if season_values else None,
+            "seasons": [
+                {"name": p.get("name"), "rate": value(p), "guest_price": _to_float(p.get("guest_price"))}
+                for p in active
+            ],
+            "price_per_extra_km": _to_float(details.get("km_more")),
+            "deposit": _to_float(details.get("deposit")),
+            "weekly_discount": _to_float(details.get("weekly_factor")),
+            "early_booker_discount": _to_float(details.get("early_booker_rate")),
+        }
 
-    def get_listing_info(self) -> dict:
-        """Get public listing information."""
-        # First load /listings/ID to get the canonical (public) URL
-        url = f"{BASE_URL}/listings/{self.listing_id}"
-        soup = self._get_page(url)
-
-        info = {"listing_id": self.listing_id}
-
-        # Grab og:image early — the initial page often has it even if canonical doesn't
-        og_image = soup.find("meta", property="og:image")
-        initial_photo = og_image.get("content") if og_image else None
-
-        # Check for canonical URL and re-fetch if different
-        canonical = soup.find("link", rel="canonical")
-        if canonical and canonical.get("href") and canonical["href"] != url:
-            canonical_url = canonical["href"]
-            info["url"] = canonical_url
-            soup = self._get_page(canonical_url)
-
-        # Title
-        title = soup.find("h1")
-        if title:
-            info["title"] = title.get_text(strip=True)
-
-        # Category and location from script data
-        for script in soup.find_all("script"):
-            text = script.string or ""
-            if "listing_id" in text:
-                match = re.search(r'"listing_category"\s*:\s*"([^"]*)"', text)
-                if match:
-                    info["category"] = match.group(1)
-                match = re.search(r'"listing_location"\s*:\s*"([^"]*)"', text)
-                if match:
-                    info["location"] = match.group(1)
-
-        # Rating and review count from "X/5 based on Y reviews" text
-        rating_text = soup.find(string=re.compile(r"\d+(\.\d+)?/5\s+based\s+on\s+\d+\s+reviews?"))
-        if rating_text:
-            match = re.search(r"(\d+(?:\.\d+)?)/5\s+based\s+on\s+(\d+)\s+reviews?", rating_text)
-            if match:
-                info["rating"] = float(match.group(1))
-                info["review_count"] = int(match.group(2))
-
-        # Fallback for review count from "X Reviews" text
-        if "review_count" not in info:
-            review_el = soup.find(string=re.compile(r"\d+\s+[Rr]eviews?"))
-            if review_el:
-                match = re.search(r"(\d+)", review_el)
-                if match:
-                    info["review_count"] = int(match.group(1))
-
-        # Times hired
-        hired_text = soup.find(string=re.compile(r"(\d+)\s+times?\s+hired"))
-        if hired_text:
-            match = re.search(r"(\d+)", hired_text)
-            if match:
-                info["times_hired"] = int(match.group(1))
-
-        # Listing photo: try og:image on canonical page, then initial page, then img tags
-        og_image = soup.find("meta", property="og:image")
-        if og_image and og_image.get("content"):
-            info["photo_url"] = og_image["content"]
-        elif initial_photo:
-            info["photo_url"] = initial_photo
-        else:
-            # Broader fallback: any Cloudinary image or listing-related img
-            img = soup.find("img", src=re.compile(r"cloudinary|res\.cloudinary\.com"))
-            if not img:
-                img = soup.find("img", class_=re.compile(r"listing|camper|hero|gallery"))
-            if img and img.get("src"):
-                info["photo_url"] = img["src"]
-
-        return info
-
-    def _ensure_logged_in(self) -> None:
-        """Login only if we have no session cookies (first run or after clear)."""
-        if not self.session.cookies:
-            self.login()
+    @staticmethod
+    def _map_listing(product: dict) -> dict:
+        pictures = sorted(product.get("picture_set") or [], key=lambda p: p.get("index", 0))
+        rating = _to_float(product.get("review_average"))
+        return {
+            "listing_id": str(product.get("id", "")),
+            "title": product.get("title"),
+            "url": product.get("ad_url"),
+            "category": product.get("vehicle_type"),
+            "location": product.get("vehicle_location_city"),
+            "rating": rating if product.get("review_count") else None,
+            "review_count": product.get("review_count"),
+            "state": product.get("state"),
+            "published": product.get("published"),
+            "photo_url": pictures[0].get("base") if pictures else None,
+        }
 
     def get_all_data(self, previous_data: dict | None = None) -> dict:
         """Get all data for the listing.
 
-        If previous_data is provided, failed sections will retain
-        previous values instead of returning empty data.
+        If previous_data is provided, failed sections keep their previous
+        values instead of returning empty data.
         """
-        self._ensure_logged_in()
-
         prev = previous_data or {}
         result = {
             "bookings": prev.get("bookings", []),
@@ -530,51 +418,30 @@ class GoboonyApi:
             "listing": prev.get("listing", {}),
         }
 
-        # Get bookings list
+        # Login problems and an unknown listing stop the update; they are not partial failures
+        product = self.resolve_product()
+        result["listing"] = self._map_listing(product)
+
         try:
-            bookings = self.get_bookings()
-            _LOGGER.debug("Found %d bookings", len(bookings))
-            # Get booking details for all bookings
-            for booking in bookings:
-                try:
-                    detail = self.get_booking_detail(booking["booking_id"])
-                    booking.update(detail)
-                except GoboonyAuthError:
-                    raise
-                except Exception as err:
-                    _LOGGER.warning("Failed to get booking detail %s: %s", booking["booking_id"], err)
-            if bookings and not any(b.get("check_in") for b in bookings if b.get("status") in ("confirmed", "accepted", "request_accepted")):
-                _LOGGER.warning(
-                    "No check-in dates found on any confirmed booking page; the Goboony page layout may have changed. Falling back to the dates column"
-                )
-            result["bookings"] = bookings
+            result["bookings"] = self.get_bookings()
+            _LOGGER.debug("Found %d bookings", len(result["bookings"]))
         except GoboonyAuthError:
             raise
-        except Exception as err:
-            _LOGGER.warning("Failed to get bookings: %s — keeping previous data", err)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to get bookings: %s; keeping previous data", err)
 
-        # Get availability
         try:
-            result["availability"] = self.get_availability()
+            result["availability"] = self.get_availability(result["bookings"])
         except GoboonyAuthError:
             raise
-        except Exception as err:
-            _LOGGER.warning("Failed to get availability: %s — keeping previous data", err)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to get availability: %s; keeping previous data", err)
 
-        # Get rates
         try:
             result["rates"] = self.get_rates()
         except GoboonyAuthError:
             raise
-        except Exception as err:
-            _LOGGER.warning("Failed to get rates: %s — keeping previous data", err)
-
-        # Get listing info
-        try:
-            result["listing"] = self.get_listing_info()
-        except GoboonyAuthError:
-            raise
-        except Exception as err:
-            _LOGGER.debug("Failed to get listing info: %s — keeping previous data", err)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to get rates: %s; keeping previous data", err)
 
         return result

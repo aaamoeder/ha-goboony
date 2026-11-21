@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import DOMAIN
 from .coordinator import GoboonyCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.CALENDAR, Platfor
 
 CARD_JS_URL = f"/{DOMAIN}/goboony-bookings-card.js"
 CARD_JS_PATH = Path(__file__).parent / "goboony-bookings-card.js"
-CARD_VERSION = "1.8.1"
+CARD_VERSION = "2.0.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:

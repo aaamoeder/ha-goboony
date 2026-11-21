@@ -10,7 +10,7 @@
           "listing_id": "Listing ID"
         },
         "data_description": {
-          "listing_id": "Your Goboony listing ID (found in the URL of your listing page)"
+          "listing_id": "Your camper ID, found in the URL of your camper page (goboony.com/campers/ID). An old Goboony listing ID also works."
         }
       },
       "reauth_confirm": {
@@ -24,7 +24,8 @@
     },
     "error": {
       "invalid_auth": "Invalid credentials",
-      "cannot_connect": "Cannot connect to Goboony"
+      "cannot_connect": "Cannot connect to Goboony",
+      "listing_not_found": "This listing is not one of the campers on your Goboony account"
     },
     "abort": {
       "already_configured": "This listing is already configured",

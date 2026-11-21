@@ -10,7 +10,7 @@
           "listing_id": "Advertentie ID"
         },
         "data_description": {
-          "listing_id": "Je Goboony advertentie ID (te vinden in de URL van je advertentiepagina)"
+          "listing_id": "Het ID van je camper, te vinden in de URL van je camperpagina (goboony.com/campers/ID). Een oud Goboony advertentie ID werkt ook."
         }
       },
       "reauth_confirm": {
@@ -24,7 +24,8 @@
     },
     "error": {
       "invalid_auth": "Ongeldige inloggegevens",
-      "cannot_connect": "Kan geen verbinding maken met Goboony"
+      "cannot_connect": "Kan geen verbinding maken met Goboony",
+      "listing_not_found": "Deze advertentie hoort niet bij de campers van je Goboony-account"
     },
     "abort": {
       "already_configured": "Deze advertentie is al geconfigureerd",

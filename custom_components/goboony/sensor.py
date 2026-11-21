@@ -1,7 +1,6 @@
 """Sensor platform for Goboony."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -12,9 +11,11 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from homeassistant.util import dt as dt_util
+
+from .const import DOMAIN, STATUS_AWAITING_PAYMENT, STATUS_CONFIRMED, STATUS_REQUEST
 from .coordinator import GoboonyCoordinator
-from .date_utils import booking_date_range, parse_check_datetime, parse_check_in_date
+from .date_utils import booking_date_range, check_in_datetime, today
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -79,15 +80,15 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get("bookings", [])
 
     def _get_confirmed_bookings(self) -> list[dict]:
-        return [b for b in self._get_bookings() if b.get("status") in ("confirmed", "accepted", "request_accepted")]
+        return [b for b in self._get_bookings() if b.get("status") == STATUS_CONFIRMED]
 
     def _get_upcoming_bookings(self) -> list[dict]:
         """Confirmed bookings that have not started yet (or start today), soonest first."""
-        today = date.today()
+        now = today()
         upcoming = []
         for b in self._get_confirmed_bookings():
             rng = booking_date_range(b)
-            if rng and rng[0] >= today:
+            if rng and rng[0] >= now:
                 upcoming.append((rng[0], b))
         upcoming.sort(key=lambda item: item[0])
         return [b for _, b in upcoming]
@@ -132,11 +133,13 @@ class GoboonyTotalBookingsSensor(GoboonyBaseSensor):
                 "num_days": b.get("num_days"),
                 "earnings": b.get("earnings"),
                 "url": b.get("url", ""),
+                "start": b.get("start"),
+                "end": b.get("end"),
             })
         return {
-            "confirmed": len([b for b in bookings if b.get("status") in ("confirmed", "accepted", "request_accepted")]),
-            "pending": len([b for b in bookings if b.get("status") in ("request",)]),
-            "inquiries": len([b for b in bookings if b.get("status") in ("inquiry", "message")]),
+            "confirmed": len([b for b in bookings if b.get("status") == STATUS_CONFIRMED]),
+            "pending": len([b for b in bookings if b.get("status") == STATUS_REQUEST]),
+            "awaiting_payment": len([b for b in bookings if b.get("status") == STATUS_AWAITING_PAYMENT]),
             "bookings": booking_list,
         }
 
@@ -215,20 +218,10 @@ class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
 
     @property
     def native_value(self) -> int | None:
-        bookings = self._get_confirmed_bookings()
-        now = datetime.now(timezone.utc)
-        today = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
-
-        best = None
-        for b in bookings:
-            dt = parse_check_in_date(b)
-            if dt and dt >= today:
-                delta = (dt - today).days
-                if best is None or delta < best:
-                    best = delta
-
-        return best
-
+        bookings = self._get_upcoming_bookings()
+        if not bookings:
+            return None
+        return (booking_date_range(bookings[0])[0] - today()).days
 
 class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
     """Total earnings from confirmed bookings."""
@@ -288,11 +281,12 @@ class GoboonyBaseRateSensor(GoboonyBaseSensor):
         rates = self._get_rates()
         return {
             "peak_rate": rates.get("peak_rate"),
-            "shoulder_early_rate": rates.get("shoulder_early_rate"),
-            "shoulder_late_rate": rates.get("shoulder_late_rate"),
-            "cleaning_fee": rates.get("cleaning_fee"),
+            "low_rate": rates.get("low_rate"),
+            "seasons": rates.get("seasons", []),
             "price_per_extra_km": rates.get("price_per_extra_km"),
-            "max_km_per_week": rates.get("max_km_per_week"),
+            "deposit": rates.get("deposit"),
+            "weekly_discount": rates.get("weekly_discount"),
+            "early_booker_discount": rates.get("early_booker_discount"),
         }
 
 
@@ -447,7 +441,6 @@ class GoboonyReviewsSensor(GoboonyBaseSensor):
         listing = self.coordinator.data.get("listing", {})
         return {
             "review_count": listing.get("review_count"),
-            "times_hired": listing.get("times_hired"),
         }
 
 
@@ -462,34 +455,32 @@ class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
     def unique_id(self) -> str:
         return f"{self._listing_id}_check_in_countdown"
 
+    def _next_check_in(self) -> tuple[dict, object] | None:
+        now = dt_util.now()
+        best = None
+        for b in self._get_confirmed_bookings():
+            dt = check_in_datetime(b)
+            if dt and dt > now and (best is None or dt < best[1]):
+                best = (b, dt)
+        return best
+
     @property
     def native_value(self) -> int | None:
-        bookings = self._get_confirmed_bookings()
-        now = datetime.now(timezone.utc)
-
-        best_hours = None
-        for b in bookings:
-            dt = parse_check_datetime(b.get("check_in", "")) or parse_check_in_date(b)
-            if dt and dt > now:
-                hours = int((dt - now).total_seconds() / 3600)
-                if best_hours is None or hours < best_hours:
-                    best_hours = hours
-
-        return best_hours
+        nxt = self._next_check_in()
+        if not nxt:
+            return None
+        return int((nxt[1] - dt_util.now()).total_seconds() / 3600)
 
     @property
     def extra_state_attributes(self) -> dict:
-        bookings = self._get_confirmed_bookings()
-        now = datetime.now(timezone.utc)
-
-        for b in bookings:
-            dt = parse_check_datetime(b.get("check_in", "")) or parse_check_in_date(b)
-            if dt and dt > now:
-                delta = dt - now
-                return {
-                    "check_in": b.get("check_in", ""),
-                    "renter": b.get("renter", ""),
-                    "days": delta.days,
-                    "hours": int(delta.total_seconds() / 3600),
-                }
-        return {}
+        nxt = self._next_check_in()
+        if not nxt:
+            return {}
+        b, dt = nxt
+        delta = dt - dt_util.now()
+        return {
+            "check_in": b.get("check_in", ""),
+            "renter": b.get("renter", ""),
+            "days": delta.days,
+            "hours": int(delta.total_seconds() / 3600),
+        }

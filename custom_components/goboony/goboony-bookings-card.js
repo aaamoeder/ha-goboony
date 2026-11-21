@@ -85,11 +85,8 @@ class GoboonyBookingsCardEditor extends HTMLElement {
                 mode: "list",
                 options: [
                   { value: "confirmed", label: "Confirmed" },
-                  { value: "accepted", label: "Accepted" },
+                  { value: "awaiting_payment", label: "Awaiting payment" },
                   { value: "request", label: "Requests" },
-                  { value: "inquiry", label: "Inquiries" },
-                  { value: "message", label: "Messages" },
-                  { value: "modified", label: "Modified" },
                 ],
               },
             },
@@ -134,7 +131,7 @@ class GoboonyBookingsCardEditor extends HTMLElement {
 
   _getDefaults() {
     return {
-      show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_statuses: ["confirmed", "awaiting_payment", "request"],
       show_header_icon: true,
       show_total_earnings: true,
       show_review: true,
@@ -259,7 +256,7 @@ class GoboonyBookingsCard extends HTMLElement {
     return {
       entity: "sensor.goboony_total_bookings",
       title: "Goboony Bookings",
-      show_statuses: ["confirmed", "accepted", "request", "inquiry", "message", "modified"],
+      show_statuses: ["confirmed", "awaiting_payment", "request"],
       show_header_icon: true,
       show_total_earnings: true,
       show_review: true,
@@ -300,63 +297,24 @@ class GoboonyBookingsCard extends HTMLElement {
   _statusInfo(status) {
     const map = {
       confirmed: { label: "Confirmed", color: "var(--success-color, #4CAF50)" },
-      accepted: { label: "Accepted", color: "var(--info-color, #2196F3)" },
-      request_accepted: { label: "Accepted", color: "var(--info-color, #2196F3)" },
+      awaiting_payment: { label: "Awaiting payment", color: "var(--info-color, #2196F3)" },
       request: { label: "Request", color: "var(--warning-color, #FF9800)" },
-      inquiry: { label: "Inquiry", color: "var(--warning-color, #FF9800)" },
-      message: { label: "Message", color: "var(--secondary-text-color)" },
-      dates_changed_by_admin: { label: "Modified", color: "var(--secondary-text-color)" },
     };
     return map[status] || { label: status, color: "var(--secondary-text-color)" };
   }
 
+  _isoDate(value) {
+    // 'YYYY-MM-DD' as a local date
+    const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
+  }
+
   _extractStartDate(booking) {
-    const ci = booking.check_in;
-    if (ci) {
-      const m = ci.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
-      if (m) {
-        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-        const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
-        return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
-      }
-    }
-    const range = this._parseDatesRange(booking.dates);
-    return range ? range.start : null;
-  }
-
-  _monthIndex(name) {
-    const months = {jan:0,feb:1,mar:2,maa:2,mrt:2,apr:3,may:4,mei:4,jun:5,jul:6,aug:7,sep:8,oct:9,okt:9,nov:10,dec:11};
-    return months[String(name || "").toLowerCase().slice(0, 3)];
-  }
-
-  _parseDatesRange(ds) {
-    // 'October 03 - October 11, 2026' or 'October 28 - 31, 2026'
-    if (!ds) return null;
-    const t = String(ds).replace(/\s+/g, " ");
-    const m = t.match(/(\p{L}+)\s+(\d{1,2})(?:,?\s*(\d{4}))?\s*[\u2013\u2014-]\s*(?:(\p{L}+)\s+)?(\d{1,2}),?\s*(\d{4})/u);
-    if (!m) return null;
-    const sm = this._monthIndex(m[1]);
-    const em = m[4] ? this._monthIndex(m[4]) : sm;
-    if (sm === undefined || em === undefined) return null;
-    const endYear = parseInt(m[6]);
-    const start = new Date(m[3] ? parseInt(m[3]) : endYear, sm, parseInt(m[2]));
-    const end = new Date(endYear, em, parseInt(m[5]));
-    if (start > end && !m[3]) start.setFullYear(start.getFullYear() - 1);
-    return { start, end };
+    return this._isoDate(booking.start);
   }
 
   _extractEndDate(booking) {
-    const co = booking.check_out;
-    if (co) {
-      const m = co.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
-      if (m) {
-        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-        const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
-        return new Date(year, months[m[2].toLowerCase()], parseInt(m[1]));
-      }
-    }
-    const range = this._parseDatesRange(booking.dates);
-    return range ? range.end : null;
+    return this._isoDate(booking.end);
   }
 
   _relativeDate(startDate) {
@@ -374,23 +332,15 @@ class GoboonyBookingsCard extends HTMLElement {
   }
 
   _statusEnabled(status, showStatuses) {
-    const map = {
-      confirmed: "confirmed",
-      accepted: "accepted",
-      request_accepted: "accepted",
-      request: "request",
-      inquiry: "inquiry",
-      message: "message",
-      dates_changed_by_admin: "modified",
-    };
-    const key = map[status] || "message";
-    return showStatuses.includes(key);
+    // Cards saved before v2.0.0 use "accepted" for bookings that are not paid yet
+    if (status === "awaiting_payment" && showStatuses.includes("accepted")) return true;
+    return showStatuses.includes(status);
   }
 
   _findActiveRental(bookings) {
     const now = new Date();
     for (const b of bookings) {
-      if (b.status !== "confirmed" && b.status !== "accepted" && b.status !== "request_accepted") continue;
+      if (b.status !== "confirmed") continue;
       const startDate = this._extractStartDate(b);
       const endDate = this._extractEndDate(b);
       if (startDate && endDate) {
@@ -433,7 +383,7 @@ class GoboonyBookingsCard extends HTMLElement {
     }
 
     const bookings = state.attributes.bookings || [];
-    const confirmed = bookings.filter(b => b.status === "confirmed" || b.status === "accepted" || b.status === "request_accepted");
+    const confirmed = bookings.filter(b => b.status === "confirmed");
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
     const compact = this._config.compact_mode === true;
 
@@ -485,7 +435,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     // Filter bookings — exclude active rental from list
     const activeBookingId = activeRental ? (activeRental.booking.booking_number || activeRental.booking.booking_id || activeRental.booking.id) : null;
-    const showStatuses = this._config.show_statuses || ["confirmed", "accepted", "request", "inquiry", "message", "modified"];
+    const showStatuses = this._config.show_statuses || ["confirmed", "awaiting_payment", "request"];
     const filtered = bookings.filter(b => {
       if (!this._statusEnabled(b.status, showStatuses)) return false;
       if (activeBookingId) {
@@ -497,7 +447,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     // Split confirmed bookings by date into upcoming and past
     const todayDay = new Date(); todayDay.setHours(0, 0, 0, 0);
-    const isConfirmedStatus = st => st === "confirmed" || st === "accepted" || st === "request_accepted";
+    const isConfirmedStatus = st => st === "confirmed";
     const dayOf = d => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null);
     for (const b of filtered) {
       b._group = b.status;
@@ -512,7 +462,7 @@ class GoboonyBookingsCard extends HTMLElement {
     let visible = filtered.filter(b => (b._group !== "upcoming" || showUpcoming) && (b._group !== "past" || showPast));
 
     // Order: upcoming, other statuses, past last. Upcoming soonest first, past most recent first.
-    const groupOrder = ["upcoming", "request", "inquiry", "message", "dates_changed_by_admin", "past"];
+    const groupOrder = ["upcoming", "request", "awaiting_payment", "past"];
     const startOf = b => { const d = this._extractStartDate(b); return d ? d.getTime() : null; };
     visible.sort((a, b) => {
       const oa = groupOrder.indexOf(a._group); const ob = groupOrder.indexOf(b._group);
@@ -530,8 +480,7 @@ class GoboonyBookingsCard extends HTMLElement {
 
     const sectionLabels = {
       upcoming: "Upcoming", past: "Past",
-      request: "Requests", inquiry: "Inquiries", message: "Messages",
-      dates_changed_by_admin: "Modified",
+      request: "Requests", awaiting_payment: "Awaiting payment",
     };
 
     // Apply max_bookings limit

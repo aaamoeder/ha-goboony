@@ -10,7 +10,7 @@
           "listing_id": "ID de l'annonce"
         },
         "data_description": {
-          "listing_id": "Votre ID d'annonce Goboony (visible dans l'URL de votre page d'annonce)"
+          "listing_id": "L'ID de votre camping-car, visible dans l'URL de sa page (goboony.com/campers/ID). Un ancien ID d'annonce Goboony fonctionne aussi."
         }
       },
       "reauth_confirm": {
@@ -24,7 +24,8 @@
     },
     "error": {
       "invalid_auth": "Identifiants invalides",
-      "cannot_connect": "Impossible de se connecter à Goboony"
+      "cannot_connect": "Impossible de se connecter à Goboony",
+      "listing_not_found": "Cette annonce ne fait pas partie des camping-cars de votre compte Goboony"
     },
     "abort": {
       "already_configured": "Cette annonce est déjà configurée",

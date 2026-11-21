@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 
-from .api import GoboonyApi, GoboonyAuthError
+from .api import GoboonyApi, GoboonyAuthError, GoboonyListingNotFound
 from .const import CONF_EMAIL, CONF_LISTING_ID, CONF_PASSWORD, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,13 +50,17 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
                 listing_id=user_input[CONF_LISTING_ID],
             )
             try:
-                await self.hass.async_add_executor_job(api.login)
+                await self.hass.async_add_executor_job(api.validate)
             except GoboonyAuthError:
                 errors["base"] = "invalid_auth"
+            except GoboonyListingNotFound:
+                errors["base"] = "listing_not_found"
             except Exception:
                 _LOGGER.exception("Unexpected error during login")
                 errors["base"] = "cannot_connect"
-            else:
+            finally:
+                await self.hass.async_add_executor_job(api.close)
+            if not errors:
                 return self.async_create_entry(
                     title=f"Goboony {user_input[CONF_LISTING_ID]}",
                     data=user_input,
@@ -99,7 +103,9 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
             except Exception:
                 _LOGGER.exception("Unexpected error during reauth")
                 errors["base"] = "cannot_connect"
-            else:
+            finally:
+                await self.hass.async_add_executor_job(api.close)
+            if not errors:
                 return self.async_update_reload_and_abort(
                     entry,
                     data={**entry.data, **user_input},

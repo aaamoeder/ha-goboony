@@ -1,7 +1,6 @@
 """Binary sensor platform for Goboony."""
 from __future__ import annotations
 
-from datetime import date
 import logging
 
 from homeassistant.components.binary_sensor import (
@@ -14,9 +13,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, STATUS_CONFIRMED, STATUS_REQUEST
 from .coordinator import GoboonyCoordinator
-from .date_utils import booking_date_range
+from .date_utils import booking_date_range, today
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,10 +67,7 @@ class GoboonyBinaryBaseSensor(CoordinatorEntity, BinarySensorEntity):
         return self.coordinator.data.get("bookings", [])
 
     def _get_confirmed_bookings(self) -> list[dict]:
-        return [
-            b for b in self._get_bookings()
-            if b.get("status") in ("confirmed", "accepted", "request_accepted")
-        ]
+        return [b for b in self._get_bookings() if b.get("status") == STATUS_CONFIRMED]
 
 
 class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
@@ -87,24 +83,24 @@ class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
 
     @property
     def is_on(self) -> bool:
-        today = date.today()
+        now = today()
         for b in self._get_confirmed_bookings():
             rng = booking_date_range(b)
-            if rng and rng[0] <= today <= rng[1]:
+            if rng and rng[0] <= now <= rng[1]:
                 return True
         return False
 
     @property
     def extra_state_attributes(self) -> dict:
-        today = date.today()
+        now = today()
         for b in self._get_confirmed_bookings():
             rng = booking_date_range(b)
-            if rng and rng[0] <= today <= rng[1]:
+            if rng and rng[0] <= now <= rng[1]:
                 return {
                     "renter": b.get("renter", ""),
                     "check_in": b.get("check_in", "") or rng[0].isoformat(),
                     "check_out": b.get("check_out", "") or rng[1].isoformat(),
-                    "remaining_days": (rng[1] - today).days,
+                    "remaining_days": (rng[1] - now).days,
                 }
         return {}
 
@@ -121,18 +117,12 @@ class GoboonyHasPendingRequestsSensor(GoboonyBinaryBaseSensor):
 
     @property
     def is_on(self) -> bool:
-        pending = [
-            b for b in self._get_bookings()
-            if b.get("status") in ("request", "inquiry")
-        ]
+        pending = [b for b in self._get_bookings() if b.get("status") == STATUS_REQUEST]
         return len(pending) > 0
 
     @property
     def extra_state_attributes(self) -> dict:
-        pending = [
-            b for b in self._get_bookings()
-            if b.get("status") in ("request", "inquiry")
-        ]
+        pending = [b for b in self._get_bookings() if b.get("status") == STATUS_REQUEST]
         return {
             "count": len(pending),
             "requests": [
@@ -154,10 +144,10 @@ class GoboonyHasUpcomingBookingSensor(GoboonyBinaryBaseSensor):
 
     @property
     def is_on(self) -> bool:
-        today = date.today()
+        now = today()
         for b in self._get_confirmed_bookings():
             rng = booking_date_range(b)
-            if rng and rng[0] > today:
+            if rng and rng[0] > now:
                 return True
         return False
 
@@ -174,7 +164,7 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
 
     @property
     def is_on(self) -> bool:
-        today = date.today()
+        now = today()
         bookings = self._get_confirmed_bookings()
 
         # Collect all date ranges
@@ -190,13 +180,13 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
         for i in range(len(ranges) - 1):
             prev_end = ranges[i][1]
             next_start = ranges[i + 1][0]
-            if prev_end <= today < next_start:
+            if prev_end <= now < next_start:
                 return True
         return False
 
     @property
     def extra_state_attributes(self) -> dict:
-        today = date.today()
+        now = today()
         bookings = self._get_confirmed_bookings()
 
         ranges = []
@@ -210,10 +200,10 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
         for i in range(len(ranges) - 1):
             prev_end = ranges[i][1]
             next_start = ranges[i + 1][0]
-            if prev_end <= today < next_start:
+            if prev_end <= now < next_start:
                 return {
                     "previous_checkout": ranges[i][2].get("check_out", ""),
                     "next_checkin": ranges[i + 1][2].get("check_in", ""),
-                    "days_until_next": (next_start - today).days,
+                    "days_until_next": (next_start - now).days,
                 }
         return {}
