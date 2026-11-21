@@ -1,3 +1,5 @@
+**English** | [Nederlands](README.nl.md)
+
 ## Purpose
 Home Assistant custom integration (HACS) for Goboony camper and motorhome rental owners. It reads your Goboony account and exposes bookings, a booking calendar and related sensors in Home Assistant, so you can see upcoming rentals and use them in dashboards and automations.
 

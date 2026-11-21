@@ -1,37 +1,37 @@
-# Changelog
+# Wijzigingen
 
-All notable changes to this integration. Versions before 2.0.0 are described in the [GitHub releases](https://github.com/aaamoeder/ha-goboony/releases).
+Alle noemenswaardige wijzigingen aan deze integratie. Versies van voor 2.0.0 staan in de [GitHub-releases](https://github.com/aaamoeder/ha-goboony/releases).
 
 ## 2.0.0 (2026-11-21)
 
-### 💥 Breaking changes
-- Goboony moved to the Yescapa platform in November 2026. The old login page and owner dashboard are gone, so 1.x can no longer log in. The integration now uses the JSON API of the new website.
-- Bookings from the old Goboony site were not moved to the new platform. Booking counts and earnings start again from the bookings on the new platform.
-- Booking statuses are now `confirmed`, `awaiting_payment` and `request`. The statuses `accepted`, `inquiry`, `message` and `modified` no longer exist.
-- Base rate sensor attributes: `shoulder_early_rate`, `shoulder_late_rate`, `cleaning_fee` and `max_km_per_week` are replaced by `low_rate`, `seasons`, `deposit`, `weekly_discount` and `early_booker_discount`.
-- Reviews sensor: the `times_hired` attribute is removed (no longer published).
-- The total bookings sensor no longer has the `inquiries` attribute; it has `awaiting_payment` instead.
+### 💥 Brekende wijzigingen
+- Goboony is in november 2026 verhuisd naar het platform van Yescapa. De oude loginpagina en het oude eigenaarsdashboard bestaan niet meer, dus 1.x kan niet meer inloggen. De integratie gebruikt nu de JSON-API van de nieuwe website.
+- Boekingen van de oude Goboony-site zijn niet meeverhuisd. Het aantal boekingen en de inkomsten beginnen opnieuw bij de boekingen op het nieuwe platform.
+- Boekingen hebben nu de status `confirmed`, `awaiting_payment` of `request`. De statussen `accepted`, `inquiry`, `message` en `modified` bestaan niet meer.
+- Attributen van de sensor Basistarief: `shoulder_early_rate`, `shoulder_late_rate`, `cleaning_fee` en `max_km_per_week` zijn vervangen door `low_rate`, `seasons`, `deposit`, `weekly_discount` en `early_booker_discount`.
+- Sensor Reviews: het attribuut `times_hired` is weg (wordt niet meer gepubliceerd).
+- De sensor Totaal boekingen heeft het attribuut `inquiries` niet meer, maar wel `awaiting_payment`.
 
-### ✨ New features
-- An old Goboony listing ID is mapped to the new camper ID automatically, so existing entities and dashboards keep working.
-- The calendar shows bookings that are only on the Goboony calendar, such as bookings made on the old site.
-- Base rate sensor attributes for all season prices, mileage price, deposit and discounts.
+### ✨ Nieuw
+- Een oud Goboony-advertentie-ID wordt automatisch omgezet naar het nieuwe camper-ID, zodat bestaande entiteiten en dashboards blijven werken.
+- De kalender toont boekingen die enkel in de Goboony-kalender staan, zoals boekingen van de oude site.
+- Attributen bij de sensor Basistarief voor alle seizoensprijzen, de prijs per extra kilometer, de waarborg en de kortingen.
 
-### 🐛 Bug fixes
-- Calendar bookings have their real check-in and check-out time in the Home Assistant time zone (they were all-day events before).
-- Days until next booking and check-in countdown use the Home Assistant time zone.
-- Blocked periods in the calendar have their real dates.
+### 🐛 Opgeloste fouten
+- Boekingen in de kalender hebben hun echte check-in- en check-out-uur in de tijdzone van Home Assistant (voorheen waren het evenementen van een hele dag).
+- Dagen tot volgende boeking en de check-in-aftelling gebruiken de tijdzone van Home Assistant.
+- Geblokkeerde periodes staan met hun echte datums in de kalender.
 
-### 🔧 Improvements
-- No more HTML scraping and no BeautifulSoup dependency.
-- The access token is renewed automatically before it expires.
-- Setup checks that the listing belongs to your account (new error "listing not found").
+### 🔧 Verbeteringen
+- Geen HTML-scraping meer en geen afhankelijkheid van BeautifulSoup.
+- Het toegangstoken wordt automatisch vernieuwd voor het verloopt.
+- Bij het instellen wordt gecontroleerd of de advertentie bij je account hoort (nieuwe foutmelding "listing not found").
 
-### 🌍 Translations
-- New error message and listing ID help text in English, Dutch, German, French and Italian.
+### 🌍 Vertalingen
+- Nieuwe foutmelding en uitleg bij het advertentie-ID in het Engels, Nederlands, Duits, Frans en Italiaans.
 
-### 🎨 UI/UX
-- Bookings card: statuses Confirmed, Awaiting payment and Requests. Cards saved with the old "Accepted" filter keep showing bookings that await payment.
+### 🎨 Uiterlijk
+- Boekingskaart: statussen "Confirmed", "Awaiting payment" en "Requests". Kaarten die met de oude filter "Accepted" bewaard zijn, tonen boekingen die op betaling wachten gewoon verder.
 
-### 📝 Documentation
-- README updated for the new platform, with upgrade notes.
+### 📝 Documentatie
+- README bijgewerkt voor het nieuwe platform, met uitleg over de overstap. Nieuw: een Nederlandse README (`README.nl.md`).
