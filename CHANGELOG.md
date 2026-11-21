@@ -34,4 +34,4 @@ Alle noemenswaardige wijzigingen aan deze integratie. Versies van voor 2.0.0 sta
 - Boekingskaart: statussen "Confirmed", "Awaiting payment" en "Requests". Kaarten die met de oude filter "Accepted" bewaard zijn, tonen boekingen die op betaling wachten gewoon verder.
 
 ### 📝 Documentatie
-- README bijgewerkt voor het nieuwe platform, met uitleg over de overstap. Nieuw: een Nederlandse README (`README.nl.md`).
+- README bijgewerkt voor het nieuwe platform, met uitleg over de overstap. De README is nu in het Nederlands, met een Engelse vertaling onderaan.
