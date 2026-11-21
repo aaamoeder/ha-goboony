@@ -1,4 +1,4 @@
-"""Button platform for Goboony."""
+"""Knoppenplatform voor Goboony."""
 from __future__ import annotations
 
 import logging
@@ -21,7 +21,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Goboony buttons from a config entry."""
+    """Zet de knoppen van Goboony op vanuit een config entry."""
     coordinator: GoboonyCoordinator = hass.data[DOMAIN][entry.entry_id]
     listing_id = entry.data.get("listing_id", "")
 
@@ -31,7 +31,7 @@ async def async_setup_entry(
 
 
 class GoboonyRefreshButton(CoordinatorEntity, ButtonEntity):
-    """Button to manually refresh Goboony data."""
+    """Knop om de Goboony-gegevens met de hand te vernieuwen."""
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:refresh"
@@ -57,5 +57,5 @@ class GoboonyRefreshButton(CoordinatorEntity, ButtonEntity):
         )
 
     async def async_press(self) -> None:
-        """Handle the button press."""
+        """Verwerk een druk op de knop."""
         await self.coordinator.async_request_refresh()

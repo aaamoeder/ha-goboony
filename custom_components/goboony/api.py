@@ -1,7 +1,7 @@
-"""API client for Goboony.
+"""API-client voor Goboony.
 
-Goboony runs on the Yescapa platform. The website talks to a JSON API with
-OAuth bearer tokens; this client uses the same endpoints.
+Goboony draait op het platform van Yescapa. De website praat met een JSON-API
+met OAuth-bearertokens; deze client gebruikt dezelfde endpoints.
 """
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Days ahead covered by the availability sensors
+# Aantal dagen vooruit voor de beschikbaarheidssensoren
 AVAILABILITY_WINDOW_DAYS = 365
 
-# Renew the access token this many seconds before it expires
+# Vernieuw het toegangstoken zoveel seconden voor het verloopt
 TOKEN_MARGIN = 300
 
 MONTHS = [
@@ -35,7 +35,7 @@ MONTHS = [
 ]
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-# Platform booking state -> status used by the sensors, calendar and card
+# Boekingstoestand van het platform -> status voor de sensoren, de kalender en de kaart
 STATE_STATUS = {
     "VALIDATED": STATUS_REQUEST,
     "ACCEPTED": STATUS_AWAITING_PAYMENT,
@@ -46,7 +46,7 @@ STATE_STATUS = {
     "DONE": STATUS_CONFIRMED,
 }
 
-# States that are not (or no longer) a booking
+# Toestanden die geen boeking (meer) zijn
 IGNORED_STATES = {
     "ACCEPTED_EXP",
     "CANCELLED_BOTH",
@@ -55,24 +55,24 @@ IGNORED_STATES = {
     "CANCELLED_STAFF",
 }
 
-# Calendar block that holds a booking imported from the old Goboony site
+# Kalenderblok met een boeking die van de oude Goboony-site overgenomen is
 REASON_GOBOONY_BOOKING = "GOBOONY_BOOKING"
 
 
 class GoboonyApiError(Exception):
-    """Base exception for API errors."""
+    """Basisfout voor API-fouten."""
 
 
 class GoboonyAuthError(GoboonyApiError):
-    """Authentication error."""
+    """Fout bij het aanmelden."""
 
 
 class GoboonyListingNotFound(GoboonyApiError):
-    """The configured listing is not one of the account's campers."""
+    """De ingestelde advertentie hoort niet bij de campers van het account."""
 
 
 def _format_check(day: date, time_text: str) -> str:
-    """Format a check-in/out moment like 'Sat 3 Oct 2026 – 2:00 PM'."""
+    """Schrijf een check-in- of check-out-moment als 'Sat 3 Oct 2026 – 2:00 PM'."""
     hour, _, minute = time_text.partition(":")
     hour_i = int(hour)
     minute_i = int(minute or 0)
@@ -85,7 +85,7 @@ def _format_check(day: date, time_text: str) -> str:
 
 
 def _format_range(start: date, end: date) -> str:
-    """Format a date range like 'October 03 - October 11, 2026'."""
+    """Schrijf een datumbereik als 'October 03 - October 11, 2026'."""
     start_text = f"{MONTHS[start.month - 1]} {start.day:02d}"
     if start.year != end.year:
         start_text += f", {start.year}"
@@ -100,12 +100,12 @@ def _to_float(value) -> float | None:
 
 
 def _days(start: date, end: date) -> list[date]:
-    """Return every day from start to end, both included."""
+    """Geef elke dag van start tot einde, beide inbegrepen."""
     return [start + timedelta(days=i) for i in range((end - start).days + 1)]
 
 
 class GoboonyApi:
-    """API client for Goboony."""
+    """API-client voor Goboony."""
 
     def __init__(self, email: str, password: str, listing_id: str) -> None:
         self.email = email
@@ -125,17 +125,17 @@ class GoboonyApi:
         })
 
     def close(self) -> None:
-        """Close the HTTP session."""
+        """Sluit de HTTP-sessie."""
         self.session.close()
 
     def clear_session(self) -> None:
-        """Forget the access token so the next call logs in again."""
+        """Vergeet het toegangstoken, zodat de volgende aanvraag opnieuw aanmeldt."""
         self._access_token = None
         self._token_expires = 0.0
         self.session.headers.pop("Authorization", None)
 
     def login(self) -> None:
-        """Log in with email and password and keep the access token."""
+        """Meld aan met e-mailadres en wachtwoord en bewaar het toegangstoken."""
         try:
             resp = self.session.post(
                 f"{API_URL}/v4/users/auth/login/",
@@ -170,7 +170,7 @@ class GoboonyApi:
             self.login()
 
     def _get(self, path: str, params: dict | None = None):
-        """GET an API path and return the decoded JSON."""
+        """Doe een GET op een API-pad en geef de gedecodeerde JSON terug."""
         self._ensure_logged_in()
         url = f"{API_URL}{path}"
         try:
@@ -196,7 +196,7 @@ class GoboonyApi:
         return self._get("/3/products/me/paginated/").get("results", [])
 
     def _legacy_product_id(self) -> int | None:
-        """Map an old Goboony listing ID to the new camper ID via the site redirect."""
+        """Zet een oud Goboony-advertentie-ID om naar het nieuwe camper-ID via de doorverwijzing van de site."""
         try:
             resp = self.session.head(
                 f"{BASE_URL}/listings/{self.listing_id}", allow_redirects=False, timeout=30
@@ -207,10 +207,10 @@ class GoboonyApi:
         return int(match.group(1)) if match else None
 
     def resolve_product(self, products: list[dict] | None = None) -> dict:
-        """Return the camper that belongs to the configured listing ID.
+        """Geef de camper die bij het ingestelde advertentie-ID hoort.
 
-        The listing ID may be the new camper ID or the ID of the old Goboony
-        site, which the site still redirects to the new camper page.
+        Het advertentie-ID kan het nieuwe camper-ID zijn of het ID van de oude
+        Goboony-site, dat de site nog doorverwijst naar de nieuwe camperpagina.
         """
         if products is None:
             products = self._get_products()
@@ -236,12 +236,12 @@ class GoboonyApi:
         )
 
     def validate(self) -> None:
-        """Log in and check that the listing belongs to the account."""
+        """Meld aan en controleer of de advertentie bij het account hoort."""
         self.login()
         self.resolve_product()
 
     def get_bookings(self) -> list[dict]:
-        """Return the owner's bookings for this camper."""
+        """Geef de boekingen van de eigenaar voor deze camper."""
         bookings = []
         page = 1
         while True:
@@ -299,7 +299,7 @@ class GoboonyApi:
         }
 
     def get_availability(self, bookings: list[dict]) -> dict:
-        """Return booked, blocked and available days for the coming year."""
+        """Geef de geboekte, geblokkeerde en vrije dagen voor het komende jaar."""
         periods = self._get(f"/3/products/{self.product_id}/calendar/periods/")
         today = date.today()
         window_end = today + timedelta(days=AVAILABILITY_WINDOW_DAYS - 1)
@@ -332,7 +332,7 @@ class GoboonyApi:
                 booked.update(days)
                 span = (start.isoformat(), end.isoformat())
                 if span not in known:
-                    # A booking that is only on the calendar, such as one from the old Goboony site
+                    # Een boeking die enkel in de kalender staat, zoals een van de oude Goboony-site
                     bookings_on_calendar.append({"start": span[0], "end": span[1]})
                     external_bookings.append({"start": span[0], "end": span[1]})
                 continue
@@ -361,7 +361,7 @@ class GoboonyApi:
         }
 
     def get_rates(self) -> dict:
-        """Return the daily rates and mileage pricing of the camper."""
+        """Geef de dagtarieven en de kilometerprijzen van de camper."""
         prices = self._get(f"/3/products/{self.product_id}/calendar/prices/")
         details = self._get(f"/3/products/{self.product_id}/prices-details/")
 
@@ -405,10 +405,10 @@ class GoboonyApi:
         }
 
     def get_all_data(self, previous_data: dict | None = None) -> dict:
-        """Get all data for the listing.
+        """Haal alle gegevens van de advertentie op.
 
-        If previous_data is provided, failed sections keep their previous
-        values instead of returning empty data.
+        Wordt previous_data meegegeven, dan houden onderdelen die mislukken hun
+        vorige waarden in plaats van leeg te worden.
         """
         prev = previous_data or {}
         result = {
@@ -418,7 +418,7 @@ class GoboonyApi:
             "listing": prev.get("listing", {}),
         }
 
-        # Login problems and an unknown listing stop the update; they are not partial failures
+        # Loginproblemen en een onbekende advertentie stoppen de update; dat zijn geen gedeeltelijke fouten
         product = self.resolve_product()
         result["listing"] = self._map_listing(product)
 

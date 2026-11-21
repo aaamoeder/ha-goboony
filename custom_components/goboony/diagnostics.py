@@ -1,4 +1,4 @@
-"""Diagnostics support for Goboony."""
+"""Diagnose voor Goboony."""
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +12,7 @@ REDACT_KEYS = {"email", "password"}
 
 
 def _redact(data: dict, keys: set[str]) -> dict:
-    """Redact sensitive keys from a dict."""
+    """Verberg gevoelige sleutels in een dict."""
     result = {}
     for k, v in data.items():
         if k in keys:
@@ -27,7 +27,7 @@ def _redact(data: dict, keys: set[str]) -> dict:
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
-    """Return diagnostics for a config entry."""
+    """Geef de diagnosegegevens van een config entry."""
     coordinator = hass.data[DOMAIN].get(entry.entry_id)
     if not coordinator:
         return {"error": "Coordinator not found"}

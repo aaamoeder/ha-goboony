@@ -1,4 +1,4 @@
-"""Calendar platform for Goboony."""
+"""Kalenderplatform voor Goboony."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -24,7 +24,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Goboony calendar from a config entry."""
+    """Zet de kalender van Goboony op vanuit een config entry."""
     coordinator: GoboonyCoordinator = hass.data[DOMAIN][entry.entry_id]
     listing_id = entry.data.get("listing_id", "")
 
@@ -34,7 +34,7 @@ async def async_setup_entry(
 
 
 def _all_day(start: str, end: str) -> tuple[date, date] | None:
-    """Return all-day event bounds for an inclusive ISO date range (end is exclusive)."""
+    """Geef de grenzen van een evenement van hele dagen voor een ISO-datumbereik met beide grenzen inbegrepen (het einde valt erbuiten)."""
     try:
         return date.fromisoformat(start), date.fromisoformat(end) + timedelta(days=1)
     except (TypeError, ValueError):
@@ -48,7 +48,7 @@ def _as_datetime(value: date | datetime) -> datetime:
 
 
 class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
-    """Calendar showing all Goboony bookings and blocked periods."""
+    """Kalender met alle Goboony-boekingen en geblokkeerde periodes."""
 
     _attr_icon = "mdi:caravan"
 
@@ -67,7 +67,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return device info."""
+        """Geef de apparaatgegevens."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._listing_id)},
             name=f"Goboony {self._listing_id}",
@@ -76,7 +76,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
         )
 
     def _build_events(self) -> list[CalendarEvent]:
-        """Build calendar events from coordinator data."""
+        """Maak kalenderevenementen uit de gegevens van de coordinator."""
         events: list[CalendarEvent] = []
         if not self.coordinator.data:
             return events
@@ -138,7 +138,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
 
     @property
     def event(self) -> CalendarEvent | None:
-        """Return the current or next upcoming event."""
+        """Geef het huidige of het eerstvolgende evenement."""
         now = dt_util.now()
         for ev in self._build_events():
             if _as_datetime(ev.end) > now:
@@ -151,7 +151,7 @@ class GoboonyBookingsCalendar(CoordinatorEntity, CalendarEntity):
         start_date: datetime,
         end_date: datetime,
     ) -> list[CalendarEvent]:
-        """Return events within a date range."""
+        """Geef de evenementen binnen een datumbereik."""
         return [
             ev for ev in self._build_events()
             if _as_datetime(ev.end) > start_date and _as_datetime(ev.start) < end_date

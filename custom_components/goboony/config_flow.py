@@ -1,4 +1,4 @@
-"""Config flow for Goboony."""
+"""Configuratiestroom voor Goboony."""
 from __future__ import annotations
 
 import logging
@@ -24,20 +24,20 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 
 class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Goboony."""
+    """Verwerk de configuratiestroom voor Goboony."""
 
     VERSION = 1
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        """Get the options flow."""
+        """Geef de optiestroom."""
         return GoboonyOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
+        """Verwerk de eerste stap."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -75,13 +75,13 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(
         self, entry_data: dict[str, Any]
     ) -> ConfigFlowResult:
-        """Handle reauth when credentials expire."""
+        """Verwerk opnieuw aanmelden als de gegevens niet meer werken."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle reauth confirmation."""
+        """Verwerk de bevestiging van het opnieuw aanmelden."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -124,12 +124,12 @@ class GoboonyConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class GoboonyOptionsFlow(OptionsFlow):
-    """Handle options for Goboony."""
+    """Verwerk de opties voor Goboony."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle options step."""
+        """Verwerk de stap met opties."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 

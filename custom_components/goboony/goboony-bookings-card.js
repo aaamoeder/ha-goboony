@@ -290,7 +290,7 @@ class GoboonyBookingsCard extends HTMLElement {
     try {
       const u = new URL(url);
       if (u.protocol === "https:" || u.protocol === "http:") return u.href;
-    } catch (e) { /* invalid URL */ }
+    } catch (e) { /* ongeldige URL */ }
     return "";
   }
 
@@ -304,7 +304,7 @@ class GoboonyBookingsCard extends HTMLElement {
   }
 
   _isoDate(value) {
-    // 'YYYY-MM-DD' as a local date
+    // 'YYYY-MM-DD' als lokale datum
     const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
     return m ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
   }
@@ -332,7 +332,7 @@ class GoboonyBookingsCard extends HTMLElement {
   }
 
   _statusEnabled(status, showStatuses) {
-    // Cards saved before v2.0.0 use "accepted" for bookings that are not paid yet
+    // Kaarten van voor v2.0.0 gebruiken "accepted" voor boekingen die nog niet betaald zijn
     if (status === "awaiting_payment" && showStatuses.includes("accepted")) return true;
     return showStatuses.includes(status);
   }
@@ -387,7 +387,7 @@ class GoboonyBookingsCard extends HTMLElement {
     const totalEarnings = confirmed.reduce((sum, b) => sum + (b.earnings || 0), 0);
     const compact = this._config.compact_mode === true;
 
-    // Review entity data
+    // Gegevens van de review-entiteit
     let reviewHtml = "";
     if (this._config.show_review !== false && this._config.review_entity) {
       const reviewState = this._hass.states[this._config.review_entity];
@@ -401,7 +401,7 @@ class GoboonyBookingsCard extends HTMLElement {
       }
     }
 
-    // Active rental detection
+    // Lopende verhuur herkennen
     const activeRental = this._findActiveRental(bookings);
     let activeRentalHtml = "";
     if (activeRental && this._config.show_active_rental !== false) {
@@ -433,7 +433,7 @@ class GoboonyBookingsCard extends HTMLElement {
       `;
     }
 
-    // Filter bookings — exclude active rental from list
+    // Boekingen filteren: de lopende verhuur niet in de lijst
     const activeBookingId = activeRental ? (activeRental.booking.booking_number || activeRental.booking.booking_id || activeRental.booking.id) : null;
     const showStatuses = this._config.show_statuses || ["confirmed", "awaiting_payment", "request"];
     const filtered = bookings.filter(b => {
@@ -445,7 +445,7 @@ class GoboonyBookingsCard extends HTMLElement {
       return true;
     }).map(b => ({ ...b }));
 
-    // Split confirmed bookings by date into upcoming and past
+    // Bevestigde boekingen op datum splitsen in komend en voorbij
     const todayDay = new Date(); todayDay.setHours(0, 0, 0, 0);
     const isConfirmedStatus = st => st === "confirmed";
     const dayOf = d => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null);
@@ -461,7 +461,7 @@ class GoboonyBookingsCard extends HTMLElement {
     const maxPast = parseInt(this._config.max_past_bookings) || 0;
     let visible = filtered.filter(b => (b._group !== "upcoming" || showUpcoming) && (b._group !== "past" || showPast));
 
-    // Order: upcoming, other statuses, past last. Upcoming soonest first, past most recent first.
+    // Volgorde: komend, andere statussen, voorbij als laatste. Komend de vroegste eerst, voorbij de recentste eerst.
     const groupOrder = ["upcoming", "request", "awaiting_payment", "past"];
     const startOf = b => { const d = this._extractStartDate(b); return d ? d.getTime() : null; };
     visible.sort((a, b) => {
@@ -483,7 +483,7 @@ class GoboonyBookingsCard extends HTMLElement {
       request: "Requests", awaiting_payment: "Awaiting payment",
     };
 
-    // Apply max_bookings limit
+    // Limiet max_bookings toepassen
     const maxBookings = parseInt(this._config.max_bookings) || 0;
     const limited = maxBookings > 0 ? filtered.slice(0, maxBookings) : filtered;
     const showSectionLabels = this._config.show_section_labels !== false;
@@ -492,14 +492,14 @@ class GoboonyBookingsCard extends HTMLElement {
     const showCheckoutDate = this._config.show_checkout_date !== false;
     const showBookingNumber = this._config.show_booking_number !== false;
 
-    // Build booking rows
+    // Rijen met boekingen opbouwen
     let bookingRows = "";
     if (limited.length === 0) {
       bookingRows = `<div class="empty">No bookings found</div>`;
     } else {
       let lastSection = "";
       let prevConfirmedEnd = null;
-      // If there's an active rental, use its end date as the starting point for gap calculation
+      // Is er een lopende verhuur, gebruik dan haar einddatum als startpunt voor de vrije dagen
       if (activeRental) {
         prevConfirmedEnd = this._extractEndDate(activeRental.booking);
       }
@@ -515,7 +515,7 @@ class GoboonyBookingsCard extends HTMLElement {
           if (section !== "Upcoming") prevConfirmedEnd = null;
         }
 
-        // Gap indicator between confirmed bookings
+        // Aanduiding van vrije dagen tussen bevestigde boekingen
         const isConfirmed = b._group === "upcoming";
         const isPast = b._group === "past";
         if (showGapIndicators && isConfirmed && prevConfirmedEnd) {
@@ -624,7 +624,7 @@ class GoboonyBookingsCard extends HTMLElement {
           box-sizing: border-box;
         }
 
-        /* Header */
+        /* Kop */
         .card-header-custom {
           display: flex; justify-content: space-between; align-items: center;
           padding: 16px 16px 12px;
@@ -662,10 +662,10 @@ class GoboonyBookingsCard extends HTMLElement {
           color: var(--success-color, #4CAF50);
         }
 
-        /* Content */
+        /* Inhoud */
         .card-content-custom { padding: 0 16px 8px; }
 
-        /* Active rental — subtle theme tint */
+        /* Lopende verhuur: lichte tint van het thema */
         .active-rental {
           background: color-mix(in srgb, var(--primary-color) 8%, var(--card-background-color, #fff));
           border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
@@ -709,7 +709,7 @@ class GoboonyBookingsCard extends HTMLElement {
           text-align: right;
         }
 
-        /* Booking links */
+        /* Links naar boekingen */
         a.booking-link, div.booking-link-none {
           display: block; text-decoration: none; color: inherit;
         }
@@ -718,7 +718,7 @@ class GoboonyBookingsCard extends HTMLElement {
         }
         a.booking-link .booking, a.booking-link .booking-compact { cursor: pointer; }
 
-        /* Normal booking row */
+        /* Gewone rij met een boeking */
         .booking.past, .booking-compact.past { opacity: 0.6; }
         .booking {
           border-left: 3px solid var(--divider-color, #e0e0e0);
@@ -761,7 +761,7 @@ class GoboonyBookingsCard extends HTMLElement {
           padding: 2px 8px; border-radius: 8px; white-space: nowrap;
         }
 
-        /* Compact mode */
+        /* Compacte weergave */
         .booking-compact {
           display: flex; align-items: center; gap: 12px;
           padding: 10px 16px;
@@ -787,7 +787,7 @@ class GoboonyBookingsCard extends HTMLElement {
           font-weight: 600; color: var(--primary-text-color); flex-shrink: 0;
         }
 
-        /* Section dividers */
+        /* Scheiding tussen secties */
         .section-divider {
           height: 1px; background: var(--divider-color, #e0e0e0);
           margin: 12px 0 4px;
@@ -798,14 +798,14 @@ class GoboonyBookingsCard extends HTMLElement {
           padding: 4px 0 8px;
         }
 
-        /* Footer */
+        /* Voettekst */
         .card-footer {
           padding: 8px 16px 12px; text-align: right;
           font-size: 0.85em; color: var(--secondary-text-color);
           opacity: 0.5;
         }
 
-        /* Gap indicator */
+        /* Aanduiding van vrije dagen */
         .gap-indicator {
           display: flex; align-items: center; justify-content: center;
           gap: 6px; padding: 4px 16px;
@@ -821,7 +821,7 @@ class GoboonyBookingsCard extends HTMLElement {
           color: inherit; opacity: 0.6;
         }
 
-        /* Empty & truncated state */
+        /* Lege en ingekorte lijst */
         .empty {
           text-align: center; padding: 24px 16px;
           color: var(--secondary-text-color);
@@ -832,7 +832,7 @@ class GoboonyBookingsCard extends HTMLElement {
           font-style: italic;
         }
 
-        /* Responsive: narrow cards / mobile */
+        /* Responsief: smalle kaarten en gsm */
         @media (max-width: 450px) {
           .card-header-custom { padding: 12px 12px 10px; }
           .card-content-custom { padding: 0 12px 8px; }

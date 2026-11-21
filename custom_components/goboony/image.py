@@ -1,4 +1,4 @@
-"""Image platform for Goboony."""
+"""Afbeeldingsplatform voor Goboony."""
 from __future__ import annotations
 
 import logging
@@ -22,7 +22,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Goboony image from a config entry."""
+    """Zet de afbeelding van Goboony op vanuit een config entry."""
     coordinator: GoboonyCoordinator = hass.data[DOMAIN][entry.entry_id]
     listing_id = entry.data.get("listing_id", "")
 
@@ -32,7 +32,7 @@ async def async_setup_entry(
 
 
 class GoboonyListingImage(CoordinatorEntity, ImageEntity):
-    """Image entity showing the listing photo."""
+    """Afbeeldingsentiteit met de foto van de advertentie."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "listing_photo"

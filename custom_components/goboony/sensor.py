@@ -1,4 +1,4 @@
-"""Sensor platform for Goboony."""
+"""Sensorplatform voor Goboony."""
 from __future__ import annotations
 
 import logging
@@ -25,7 +25,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Goboony sensors from a config entry."""
+    """Zet de sensoren van Goboony op vanuit een config entry."""
     coordinator: GoboonyCoordinator = hass.data[DOMAIN][entry.entry_id]
     listing_id = entry.data.get("listing_id", "")
 
@@ -50,7 +50,7 @@ async def async_setup_entry(
 
 
 class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
-    """Base class for Goboony sensors."""
+    """Basisklasse voor de sensoren van Goboony."""
 
     _attr_has_entity_name = True
 
@@ -66,7 +66,7 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return device info."""
+        """Geef de apparaatgegevens."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._listing_id)},
             name=f"Goboony {self._listing_id}",
@@ -83,7 +83,7 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
         return [b for b in self._get_bookings() if b.get("status") == STATUS_CONFIRMED]
 
     def _get_upcoming_bookings(self) -> list[dict]:
-        """Confirmed bookings that have not started yet (or start today), soonest first."""
+        """Bevestigde boekingen die nog niet begonnen zijn (of vandaag beginnen), de vroegste eerst."""
         now = today()
         upcoming = []
         for b in self._get_confirmed_bookings():
@@ -105,7 +105,7 @@ class GoboonyBaseSensor(CoordinatorEntity, SensorEntity):
 
 
 class GoboonyTotalBookingsSensor(GoboonyBaseSensor):
-    """Total number of bookings."""
+    """Totaal aantal boekingen."""
 
     _attr_icon = "mdi:book-multiple"
     _attr_translation_key = "total_bookings"
@@ -145,7 +145,7 @@ class GoboonyTotalBookingsSensor(GoboonyBaseSensor):
 
 
 class GoboonyConfirmedBookingsSensor(GoboonyBaseSensor):
-    """Number of confirmed bookings."""
+    """Aantal bevestigde boekingen."""
 
     _attr_icon = "mdi:book-check"
     _attr_translation_key = "confirmed_bookings"
@@ -172,7 +172,7 @@ class GoboonyConfirmedBookingsSensor(GoboonyBaseSensor):
 
 
 class GoboonyNextBookingSensor(GoboonyBaseSensor):
-    """Next upcoming confirmed booking."""
+    """Eerstvolgende bevestigde boeking."""
 
     _attr_icon = "mdi:calendar-arrow-right"
     _attr_translation_key = "next_booking"
@@ -206,7 +206,7 @@ class GoboonyNextBookingSensor(GoboonyBaseSensor):
 
 
 class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
-    """Days until next booking."""
+    """Dagen tot de volgende boeking."""
 
     _attr_icon = "mdi:calendar-clock"
     _attr_native_unit_of_measurement = "d"
@@ -224,7 +224,7 @@ class GoboonyNextBookingDaysSensor(GoboonyBaseSensor):
         return (booking_date_range(bookings[0])[0] - today()).days
 
 class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
-    """Total earnings from confirmed bookings."""
+    """Totale inkomsten van bevestigde boekingen."""
 
     _attr_icon = "mdi:cash-multiple"
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -259,7 +259,7 @@ class GoboonyTotalEarningsSensor(GoboonyBaseSensor):
 
 
 class GoboonyBaseRateSensor(GoboonyBaseSensor):
-    """Base (low season) rate."""
+    """Basistarief (standaardtarief)."""
 
     _attr_icon = "mdi:currency-eur"
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -291,7 +291,7 @@ class GoboonyBaseRateSensor(GoboonyBaseSensor):
 
 
 class GoboonyPeakRateSensor(GoboonyBaseSensor):
-    """Peak season rate."""
+    """Tarief van het hoogseizoen."""
 
     _attr_icon = "mdi:cash-plus"
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -310,7 +310,7 @@ class GoboonyPeakRateSensor(GoboonyBaseSensor):
 
 
 class GoboonyBookedDaysSensor(GoboonyBaseSensor):
-    """Number of booked days on calendar."""
+    """Aantal geboekte dagen in de kalender."""
 
     _attr_icon = "mdi:calendar-check"
     _attr_native_unit_of_measurement = "d"
@@ -327,7 +327,7 @@ class GoboonyBookedDaysSensor(GoboonyBaseSensor):
 
 
 class GoboonyBlockedDaysSensor(GoboonyBaseSensor):
-    """Number of blocked days on calendar."""
+    """Aantal geblokkeerde dagen in de kalender."""
 
     _attr_icon = "mdi:calendar-remove"
     _attr_native_unit_of_measurement = "d"
@@ -352,7 +352,7 @@ class GoboonyBlockedDaysSensor(GoboonyBaseSensor):
 
 
 class GoboonyAvailableDaysSensor(GoboonyBaseSensor):
-    """Number of available days on calendar."""
+    """Aantal vrije dagen in de kalender."""
 
     _attr_icon = "mdi:calendar-blank"
     _attr_native_unit_of_measurement = "d"
@@ -369,7 +369,7 @@ class GoboonyAvailableDaysSensor(GoboonyBaseSensor):
 
 
 class GoboonyBlockedPeriodsSensor(GoboonyBaseSensor):
-    """Blocked periods info."""
+    """Gegevens over geblokkeerde periodes."""
 
     _attr_icon = "mdi:calendar-lock"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -395,7 +395,7 @@ class GoboonyBlockedPeriodsSensor(GoboonyBaseSensor):
 
 
 class GoboonyOccupancyRateSensor(GoboonyBaseSensor):
-    """Occupancy rate as a percentage of booked vs available days."""
+    """Bezettingsgraad als percentage van geboekte tegenover vrije dagen."""
 
     _attr_icon = "mdi:percent-circle"
     _attr_native_unit_of_measurement = "%"
@@ -418,7 +418,7 @@ class GoboonyOccupancyRateSensor(GoboonyBaseSensor):
 
 
 class GoboonyReviewsSensor(GoboonyBaseSensor):
-    """Listing rating/reviews."""
+    """Score en reviews van de advertentie."""
 
     _attr_icon = "mdi:star"
     _attr_translation_key = "reviews"
@@ -445,7 +445,7 @@ class GoboonyReviewsSensor(GoboonyBaseSensor):
 
 
 class GoboonyCheckInCountdownSensor(GoboonyBaseSensor):
-    """Hours until next check-in."""
+    """Uren tot de volgende check-in."""
 
     _attr_icon = "mdi:timer-sand"
     _attr_native_unit_of_measurement = "h"

@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for Goboony."""
+"""DataUpdateCoordinator voor Goboony."""
 from __future__ import annotations
 
 import logging
@@ -19,12 +19,12 @@ MAX_CONSECUTIVE_FAILURES = 3
 
 
 class GoboonyCoordinator(DataUpdateCoordinator[dict]):
-    """Goboony data update coordinator."""
+    """Coordinator die de Goboony-gegevens bijwerkt."""
 
     config_entry: ConfigEntry
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        """Initialize the coordinator."""
+        """Initialiseer de coordinator."""
         self._normal_interval = timedelta(
             minutes=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL // 60)
         )
@@ -43,13 +43,13 @@ class GoboonyCoordinator(DataUpdateCoordinator[dict]):
         self._consecutive_failures = 0
 
     async def _async_update_data(self) -> dict:
-        """Fetch data from Goboony."""
+        """Haal de gegevens op bij Goboony."""
         try:
             data = await self.hass.async_add_executor_job(
                 self.api.get_all_data, self.data
             )
             self._consecutive_failures = 0
-            # Restore normal interval after successful fetch
+            # Zet het gewone interval terug na een geslaagde ophaalbeurt
             if self.update_interval != self._normal_interval:
                 _LOGGER.debug("Update succeeded, restoring normal interval (%s)", self._normal_interval)
                 self.update_interval = self._normal_interval
@@ -72,10 +72,10 @@ class GoboonyCoordinator(DataUpdateCoordinator[dict]):
                 RETRY_INTERVAL,
             )
 
-            # Switch to fast retry interval
+            # Schakel over naar het snelle interval om opnieuw te proberen
             self.update_interval = RETRY_INTERVAL
 
-            # Keep previous data if we have it and haven't failed too many times
+            # Houd de vorige gegevens als die er zijn en het nog niet te vaak mislukte
             if self.data and self._consecutive_failures < MAX_CONSECUTIVE_FAILURES:
                 _LOGGER.debug("Keeping previous data, retry scheduled in %s", RETRY_INTERVAL)
                 return self.data

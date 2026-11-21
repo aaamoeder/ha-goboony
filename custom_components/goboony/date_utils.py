@@ -1,4 +1,4 @@
-"""Shared date helpers for Goboony bookings."""
+"""Gedeelde datumhulpfuncties voor Goboony-boekingen."""
 from __future__ import annotations
 
 from datetime import date, datetime, time
@@ -7,12 +7,12 @@ from homeassistant.util import dt as dt_util
 
 
 def today() -> date:
-    """Return today's date in the Home Assistant time zone."""
+    """Geef de datum van vandaag in de tijdzone van Home Assistant."""
     return dt_util.now().date()
 
 
 def booking_date_range(booking: dict) -> tuple[date, date] | None:
-    """Return the (start, end) dates of a booking, both included."""
+    """Geef de datums (start, einde) van een boeking, beide inbegrepen."""
     try:
         return date.fromisoformat(booking["start"]), date.fromisoformat(booking["end"])
     except (KeyError, TypeError, ValueError):
@@ -20,7 +20,7 @@ def booking_date_range(booking: dict) -> tuple[date, date] | None:
 
 
 def _clock(text: str | None, default: time) -> time:
-    """Parse a time like '14:00'."""
+    """Lees een tijd als '14:00'."""
     try:
         hour, _, minute = str(text).partition(":")
         return time(int(hour), int(minute or 0))
@@ -29,7 +29,7 @@ def _clock(text: str | None, default: time) -> time:
 
 
 def check_in_datetime(booking: dict) -> datetime | None:
-    """Return the check-in moment in the Home Assistant time zone."""
+    """Geef het moment van check-in in de tijdzone van Home Assistant."""
     rng = booking_date_range(booking)
     if not rng:
         return None
@@ -41,7 +41,7 @@ def check_in_datetime(booking: dict) -> datetime | None:
 
 
 def check_out_datetime(booking: dict) -> datetime | None:
-    """Return the check-out moment in the Home Assistant time zone."""
+    """Geef het moment van check-out in de tijdzone van Home Assistant."""
     rng = booking_date_range(booking)
     if not rng:
         return None

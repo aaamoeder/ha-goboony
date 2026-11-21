@@ -1,4 +1,4 @@
-"""Binary sensor platform for Goboony."""
+"""Platform voor binaire sensoren van Goboony."""
 from __future__ import annotations
 
 import logging
@@ -25,7 +25,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Goboony binary sensors from a config entry."""
+    """Zet de binaire sensoren van Goboony op vanuit een config entry."""
     coordinator: GoboonyCoordinator = hass.data[DOMAIN][entry.entry_id]
     listing_id = entry.data.get("listing_id", "")
 
@@ -38,7 +38,7 @@ async def async_setup_entry(
 
 
 class GoboonyBinaryBaseSensor(CoordinatorEntity, BinarySensorEntity):
-    """Base class for Goboony binary sensors."""
+    """Basisklasse voor de binaire sensoren van Goboony."""
 
     _attr_has_entity_name = True
 
@@ -71,7 +71,7 @@ class GoboonyBinaryBaseSensor(CoordinatorEntity, BinarySensorEntity):
 
 
 class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
-    """Binary sensor: ON when the camper is currently rented out."""
+    """Binaire sensor: AAN als de camper nu verhuurd is."""
 
     _attr_icon = "mdi:caravan"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
@@ -106,7 +106,7 @@ class GoboonyCurrentlyRentedSensor(GoboonyBinaryBaseSensor):
 
 
 class GoboonyHasPendingRequestsSensor(GoboonyBinaryBaseSensor):
-    """Binary sensor: ON when there are pending booking requests."""
+    """Binaire sensor: AAN als er open boekingsaanvragen zijn."""
 
     _attr_icon = "mdi:bell-ring"
     _attr_translation_key = "has_pending_requests"
@@ -133,7 +133,7 @@ class GoboonyHasPendingRequestsSensor(GoboonyBinaryBaseSensor):
 
 
 class GoboonyHasUpcomingBookingSensor(GoboonyBinaryBaseSensor):
-    """Binary sensor: ON when there's a confirmed booking in the future."""
+    """Binaire sensor: AAN als er een bevestigde boeking in de toekomst is."""
 
     _attr_icon = "mdi:calendar-check"
     _attr_translation_key = "has_upcoming_booking"
@@ -153,7 +153,7 @@ class GoboonyHasUpcomingBookingSensor(GoboonyBinaryBaseSensor):
 
 
 class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
-    """Binary sensor: ON between a check-out and the next check-in (turnaround window)."""
+    """Binaire sensor: AAN tussen een check-out en de volgende check-in (wisselperiode)."""
 
     _attr_icon = "mdi:swap-horizontal"
     _attr_translation_key = "turnaround"
@@ -167,7 +167,7 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
         now = today()
         bookings = self._get_confirmed_bookings()
 
-        # Collect all date ranges
+        # Verzamel alle datumbereiken
         ranges = []
         for b in bookings:
             rng = booking_date_range(b)
@@ -176,7 +176,7 @@ class GoboonyTurnaroundSensor(GoboonyBinaryBaseSensor):
 
         ranges.sort(key=lambda r: r[0])
 
-        # Check if today falls between consecutive bookings
+        # Kijk of vandaag tussen twee opeenvolgende boekingen valt
         for i in range(len(ranges) - 1):
             prev_end = ranges[i][1]
             next_start = ranges[i + 1][0]

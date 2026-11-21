@@ -1,4 +1,4 @@
-"""Goboony integration for Home Assistant."""
+"""Goboony-integratie voor Home Assistant."""
 from __future__ import annotations
 
 import logging
@@ -23,12 +23,13 @@ CARD_VERSION = "2.0.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
-    """Make the Lovelace card available on dashboards.
+    """Maak de Lovelace-kaart beschikbaar op dashboards.
 
-    The card is registered as a Lovelace resource. An extra JS module runs before
-    the frontend's custom element registry is ready, so on a direct page load the
-    card stays undefined ("Custom element doesn't exist"). When Lovelace resources
-    are managed in YAML they cannot be edited, so we fall back to the extra JS URL.
+    De kaart wordt als Lovelace-resource geregistreerd. Een extra JS-module laadt
+    voor het register van custom elements in de frontend klaar is, waardoor de kaart
+    bij een rechtstreekse paginalading onbekend blijft ("Custom element doesn't
+    exist"). Worden de Lovelace-resources in YAML beheerd, dan kunnen ze niet
+    aangepast worden en valt de integratie terug op de extra JS-URL.
     """
     await hass.http.async_register_static_paths(
         [StaticPathConfig(CARD_JS_URL, str(CARD_JS_PATH), cache_headers=False)]
@@ -60,8 +61,8 @@ async def _async_register_card(hass: HomeAssistant) -> None:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Goboony from a config entry."""
-    # Register the custom card JS (only once)
+    """Zet Goboony op vanuit een config entry."""
+    # Registreer het JS-bestand van de kaart (maar een keer)
     hass.data.setdefault(DOMAIN, {})
     if "frontend_loaded" not in hass.data[DOMAIN]:
         await _async_register_card(hass)
@@ -79,12 +80,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update — reload integration to apply new scan interval."""
+    """Verwerk gewijzigde opties: herlaad de integratie om het nieuwe interval toe te passen."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Ontlaad een config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         coordinator: GoboonyCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         await hass.async_add_executor_job(coordinator.api.close)
